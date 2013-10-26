@@ -48,6 +48,10 @@ function bankstat_import_file_to_database($filepath) {
 
 		while(!feof($file)) {
 			$line = fgets($file);
+
+			// Remove text delimiter
+			$line = str_replace("\"", "", $line);
+
 			$fields = explode(";", $line);
 			
 			// If we get this, it's probably the end of the file
