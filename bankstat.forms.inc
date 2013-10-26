@@ -33,8 +33,56 @@ function bankstat_import_form_submit($form, &$form_state) {
 
 function bankstat_import_file_to_database($filepath) {
 		$file = fopen($filepath, 'r');
+		
+		$header_expected = array(
+			"Bokf.dat",
+			"Trans.dat",
+			"Text",
+			"Insättning/Uttag",
+			"Behållning"
+		);
+
+		// First get the header row
+		$line = fgets($file);
+		// TODO: Validate header row? Now we skip it ...
+
 		while(!feof($file)) {
-			echo fgets($file). "<br>";
+			$line = fgets($file);
+			$fields = explode(";", $line);
+			
+			// If we get this, it's probably the end of the file
+			if (count($fields) != count($header_expected)) {
+				break;
+			}
+
+			$node_info = array(
+				'booking_date' => $fields[0],
+				'transaction_date' => $fields[1],
+				'title' => $fields[2],
+				'amount' => $fields[3],
+				'balance' => $fields[4],
+			);
+
+			bankstat_create_node($node_info);
+
+			// TODO: Remove
+			break;
 		}
 		fclose($file);
+
+		die();
+}
+
+
+function bankstat_create_node($node_info) {
+	print_r($node_info);
+
+	$node = new stdClass();
+	$node->type = 'expensetype';
+
+	node_object_prepare($node);
+	$node->title = $node_info['title'];
+	$node->language = LANGUAGE_NONE;
+	node_save($node);
+
 }
