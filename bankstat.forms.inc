@@ -6,6 +6,25 @@ function bankstat_import_form($form, &$form_state) {
 		'#title' => t('Choose a file'),
 	);
 
+	// List all the bank accounts
+	$bank_account_vocabulary = taxonomy_vocabulary_machine_name_load('bank_account');
+	$terms = taxonomy_get_tree($bank_account_vocabulary->vid);
+
+	$bank_account_terms = array();
+	foreach($terms as $term) {
+		$bank_account_terms[$term->tid] = $term->name;
+	}
+
+	$tids = array_keys($bank_account_terms);
+	$default_value = $tids[0];
+
+  $form['bank_account'] = array(
+			'#type' => 'radios',
+			'#title' => t('Bank account'),
+			'#default_value' => $default_value,
+			'#options' => $bank_account_terms,
+			);
+
 	$form['submit_button'] = array(
 		'#type' => 'submit',
 		'#value' => t('Import'),
@@ -19,9 +38,11 @@ function bankstat_import_form_submit($form, &$form_state) {
 		'file_validate_extensions' => array('csv'),
 	));
 
+	$bank_account_tid = $form_state['values']['bank_account'];
+
 	if ($file) {
 		$realpath = drupal_realpath($file->uri);
-		bankstat_import_file_to_database($realpath);
+		bankstat_import_file_to_database($realpath, $bank_account_tid);
 
 		drupal_set_message(t('The file has been uploaded'));
 	}
@@ -31,7 +52,7 @@ function bankstat_import_form_submit($form, &$form_state) {
 }
 
 
-function bankstat_import_file_to_database($filepath) {
+function bankstat_import_file_to_database($filepath, $bank_account_tid) {
 		$file = fopen($filepath, 'r');
 		
 		$header_expected = array(
@@ -65,16 +86,17 @@ function bankstat_import_file_to_database($filepath) {
 				'title' => $fields[2],
 				'amount' => $fields[3],
 				'balance' => $fields[4],
+				'bank_account_tid' => $bank_account_tid,
 			);
 
 			bankstat_create_node($node_info);
 
 			// TODO: Remove
-			break;
+			//break;
 		}
 		fclose($file);
 
-		die();
+		//die();
 }
 
 
@@ -86,9 +108,6 @@ function bankstat_create_node($node_info) {
 
 	node_object_prepare($node);
 
-	echo "NODE<br/>";
-	var_dump($node);
-
 	$node->title = $node_info['title'];
 	$node->language = LANGUAGE_NONE;
 
@@ -97,8 +116,9 @@ function bankstat_create_node($node_info) {
 	$node->field_balance[$node->language][0]['value'] = $node_info['balance'];
 	$node->field_booking_date[$node->language][0]['value'] = $node_info['booking_date'];
 	$node->field_transaction_date[$node->language][0]['value'] = $node_info['transaction_date'];
+	// Chosen bank account
+	$node->field_bank_account[$node->language][0]['tid'] = $node_info['bank_account_tid'];
 
 	$node = node_submit($node);
 	node_save($node);
-
 }
