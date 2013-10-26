@@ -116,6 +116,8 @@ function bankstat_create_node($node_info) {
 	$node->field_balance[$node->language][0]['value'] = $node_info['balance'];
 	$node->field_booking_date[$node->language][0]['value'] = $node_info['booking_date'];
 	$node->field_transaction_date[$node->language][0]['value'] = $node_info['transaction_date'];
+	// This will be false since we have not yet set any taxonomies on it. 0 equals false
+	$node->field_is_categorized[$node->language][0]['value'] = 0;
 	// Chosen bank account
 	$node->field_bank_account[$node->language][0]['tid'] = $node_info['bank_account_tid'];
 
