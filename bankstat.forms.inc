@@ -81,8 +81,17 @@ function bankstat_create_node($node_info) {
 	$node->type = 'expensetype';
 
 	node_object_prepare($node);
+
+	echo "NODE<br/>";
+	var_dump($node);
+
 	$node->title = $node_info['title'];
 	$node->language = LANGUAGE_NONE;
+
+	// Custom fields: Amount, balance, booking date, transaction date
+	$node->field_amount[$node->language][0]['value'] = 123.5;
+
+	$node = node_submit($node);
 	node_save($node);
 
 }
