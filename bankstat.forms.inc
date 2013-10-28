@@ -124,3 +124,52 @@ function bankstat_create_node($node_info) {
 	$node = node_submit($node);
 	node_save($node);
 }
+
+
+function bankstat_view_all_form($form, &$form_state) {
+
+	// TODO: Get GET parameter to check if some special stuff has been selected
+
+	$nodes = array();
+
+	$nodes[162] = 'SODERMANNA VEGETARISKA STOCKHO';
+	$nodes[163] = 'SATTVA GAMLA STAN STOCKHOLM';
+
+	// TODO: Use tableselect perhaps?
+
+	$form['selected'] = array(
+		'#type' => 'checkboxes',
+		'#title' => t('Nodes'),
+		'#options' => $nodes,
+	);
+
+
+	// Get a list of all the expense_tags
+	$expense_tags_vocabulary = taxonomy_vocabulary_machine_name_load('expense');
+	$terms = taxonomy_get_tree($expense_tags_vocabulary->vid);
+
+	$expense_tags_terms = array();
+
+	// TODO: Add an empty row first
+
+	foreach($terms as $term) {
+		$expense_tags_terms[$term->tid] = $term->name;
+	}
+
+	$tids = array_keys($expense_tags_terms);
+	$default_value = $tids[0];
+
+  $form['expense_tags'] = array(
+			'#type' => 'select',
+			'#title' => t('Expense tags'),
+			'#default_value' => $default_value,
+			'#options' => $expense_tags_terms,
+			);
+
+	$form['submit_button'] = array(
+		'#type' => 'submit',
+		'#value' => t('Set new tags'),
+	);
+
+	return $form;
+}
