@@ -127,22 +127,45 @@ function bankstat_create_node($node_info) {
 
 
 function bankstat_view_all_form($form, &$form_state) {
-
+	
 	// TODO: Get GET parameter to check if some special stuff has been selected
-
+	$nodes_list = node_load_multiple(array(), array('type' => 'expensetype'));
+	
 	$nodes = array();
 
-	$nodes[162] = 'SODERMANNA VEGETARISKA STOCKHO';
-	$nodes[163] = 'SATTVA GAMLA STAN STOCKHOLM';
+	foreach ($nodes_list as $node) {
+		// This will be false since we have not yet set any taxonomies on it. 0 equals false
+		$is_categorized = $node->field_is_categorized[$node->language][0]['value'];
+
+		// If it's already categorized, skip it
+		if ($is_categorized == 1) {
+			continue;
+		}
+
+		$nid = $node->nid;
+
+		$title = $node->title;
+		$amount = $node->field_amount[$node->language][0]['value'];
+
+		$balance = $node->field_balance[$node->language][0]['value'];
+		$booking_date = $node->field_booking_date[$node->language][0]['value'];
+		$transaction_date = $node->field_transaction_date[$node->language][0]['value'];
+		// Chosen bank account
+		$bank_account_tid = $node->field_bank_account[$node->language][0]['tid'];
+
+		$display = $booking_date . ', ' . $amount . ' - ' . $title;
+
+		// Add to list
+		$nodes[$nid] = $display;
+	}
 
 	// TODO: Use tableselect perhaps?
 
-	$form['selected'] = array(
+	$form['selected_nids'] = array(
 		'#type' => 'checkboxes',
 		'#title' => t('Nodes'),
 		'#options' => $nodes,
 	);
-
 
 	// Get a list of all the expense_tags
 	$expense_tags_vocabulary = taxonomy_vocabulary_machine_name_load('expense');
@@ -172,4 +195,24 @@ function bankstat_view_all_form($form, &$form_state) {
 	);
 
 	return $form;
+}
+
+
+
+function bankstat_view_all_form_submit($form, &$form_state) {
+	// Get all selected values
+
+	$selected_nids = array_keys(array_filter($form_state['values']['selected_nids']));
+
+	$expense_tag_tid = intval($form_state['values']['expense_tags']);
+
+	foreach ($selected_nids as $nid) {
+		$node = node_load($nid);
+		$node->field_tag[$node->language][0]['tid'] = $expense_tag_tid;
+		// Now we can say that this node is categorized
+		$node->field_is_categorized[$node->language][0]['value'] = 1;
+		node_save($node);
+	}
+
+	drupal_set_message(t('Sucessfully set new tags'));
 }
