@@ -44,7 +44,7 @@ function bankstat_import_form_submit($form, &$form_state) {
 		$realpath = drupal_realpath($file->uri);
 		bankstat_import_file_to_database($realpath, $bank_account_tid);
 
-		drupal_set_message(t('The file has been uploaded'));
+		drupal_set_message(t('The file @filename has been imported', array('@filename' => $file->filename)));
 	}
 	else {
 		form_set_error('file', t('Error reading file'));
@@ -215,4 +215,45 @@ function bankstat_view_all_form_submit($form, &$form_state) {
 	}
 
 	drupal_set_message(t('Sucessfully set new tags'));
+}
+
+
+// Might be better to create a form, so one can choose what fields
+// should be included, and when clicking submit one is passed back
+// to the same page so that we know what to render
+
+function bankstat_statistics($form, &$form_state) {
+	$query = new EntityFieldQuery;
+
+	// TODO: Get GET variables
+	
+	// TODO: Get chosen tags
+
+	// TODO: Get chosen date intervals
+
+	$expense_tag_tids = array('2', '3');
+
+	if (isset($_GET['expense_tags'])) {
+		$expense_tag_tids = json_decode($_GET['expense_tags']);
+	} else {
+		
+	}
+
+
+	var_dump($expense_tag_tids);
+
+	//die();
+
+	// Get list of nodes with enity type
+	$result = $query
+		->entityCondition('entity_type', 'node')
+		->propertyCondition('status', 1)
+		->fieldCondition('field_tag','tid', $expense_tag_tids, 'IN') 
+		->execute();
+
+	echo "<br/><br/> node result: <br/>";
+	var_dump($result);
+
+
+	// TODO: Sum all costs
 }

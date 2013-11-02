@@ -21,6 +21,15 @@ function bankstat_menu() {
 		'file' => 'bankstat.forms.inc',
 	);
 
+	$items['bankstat/view/stats'] = array( 
+		'title' => 'Statistics', 
+		'description' => 'The page to view statistics bank data',
+		'page callback' => 'drupal_get_form', 
+		'page arguments' => array('bankstat_statistics'),
+		'access callback' => TRUE,
+		'file' => 'bankstat.forms.inc',
+	);
+
 	return $items;
 }
 
