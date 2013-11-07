@@ -21,6 +21,15 @@ function bankstat_menu() {
 		'file' => 'bankstat.forms.inc',
 	);
 
+	$items['bankstat/view/expensetag'] = array( 
+		'title' => 'View expense tag nodes', 
+		'description' => 'The page to view all your bank data with a specific tag',
+		'page callback' => 'drupal_get_form', 
+		'page arguments' => array('bankstat_view_node_expensetype_form'),
+		'access callback' => TRUE,
+		'file' => 'bankstat.forms.inc',
+	);
+
 	$items['bankstat/view/stats'] = array( 
 		'title' => 'Statistics', 
 		'description' => 'The page to view statistics bank data',

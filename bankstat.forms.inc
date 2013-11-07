@@ -127,11 +127,13 @@ function bankstat_create_node($node_info) {
 
 
 function bankstat_view_all_form($form, &$form_state) {
-	
 	// TODO: Get GET parameter to check if some special stuff has been selected
 	$nodes_list = node_load_multiple(array(), array('type' => 'expensetype'));
 	
 	$nodes = array();
+
+	$count = 0;
+	$limit = 50;
 
 	foreach ($nodes_list as $node) {
 		// This will be false since we have not yet set any taxonomies on it. 0 equals false
@@ -140,6 +142,161 @@ function bankstat_view_all_form($form, &$form_state) {
 		// If it's already categorized, skip it
 		if ($is_categorized == 1) {
 			continue;
+		}
+
+		// So we don't get timeout if there are too many
+		$count = $count+1;
+		if ($count > $limit) {
+			break;
+		}
+
+		$nid = $node->nid;
+
+		$title = $node->title;
+		$amount = $node->field_amount[$node->language][0]['value'];
+
+		$balance = $node->field_balance[$node->language][0]['value'];
+		$booking_date = $node->field_booking_date[$node->language][0]['value'];
+		$transaction_date = $node->field_transaction_date[$node->language][0]['value'];
+		// Chosen bank account
+		$bank_account_tid = $node->field_bank_account[$node->language][0]['tid'];
+
+		///$display = $booking_date . ', ' . $amount . ' - ' . '<label>' . $title . '</label>';
+		$display = $booking_date . ', ' . $amount . ' - ' . '<b>' . $title . '</b>';
+
+		// Add to list
+		$nodes[$nid] = $display;
+	}
+
+	$form['#attached']['js'] = array(
+		drupal_get_path('module', 'bankstat') . '/bankstat.js',
+	);
+
+	$form['scripttextfield'] = array(
+		'#id' => 'scripttextfield',
+		'#type' => 'textfield',
+		'#title' => t('Script your stuff'),
+	);
+
+	$form['applyscriptbutton'] = array(
+		'#id' => 'applyscriptbutton',
+		'#type' => 'button',
+		'#value' => t('Apply rule'),
+		//'#attributes ' => array('onclick' => 'applyPatternOnSelect()'),
+	);
+
+	$form['selected_nids'] = array(
+		'#id' => 'selected_nids',
+		'#type' => 'checkboxes',
+		'#title' => t('Nodes'),
+		'#options' => $nodes,
+	);
+
+	// Get a list of all the expense_tags
+	$expense_tags_vocabulary = taxonomy_vocabulary_machine_name_load('expense');
+	$terms = taxonomy_get_tree($expense_tags_vocabulary->vid);
+
+	$expense_tags_terms = array();
+
+	// TODO: Add an empty row first
+
+	foreach($terms as $term) {
+		$expense_tags_terms[$term->tid] = $term->name;
+	}
+
+	$tids = array_keys($expense_tags_terms);
+	$default_value = $tids[0];
+
+  $form['expense_tags'] = array(
+			'#type' => 'select',
+			'#title' => t('Expense tags'),
+			'#default_value' => $default_value,
+			'#options' => $expense_tags_terms,
+			);
+
+	$form['submit_button'] = array(
+		'#type' => 'submit',
+		'#value' => t('Set new tags'),
+	);
+
+	return $form;
+}
+
+
+
+function bankstat_view_all_form_submit($form, &$form_state) {
+	// Get all selected values
+
+	$selected_nids = array_keys(array_filter($form_state['values']['selected_nids']));
+
+	$expense_tag_tid = intval($form_state['values']['expense_tags']);
+
+	foreach ($selected_nids as $nid) {
+		$node = node_load($nid);
+		$node->field_tag[$node->language][0]['tid'] = $expense_tag_tid;
+		// Now we can say that this node is categorized
+		$node->field_is_categorized[$node->language][0]['value'] = 1;
+		node_save($node);
+	}
+
+	drupal_set_message(t('Sucessfully set new tags'));
+}
+
+function bankstat_view_node_expensetype_form($form, &$form_state) {
+	// TODO: Load all expense types
+
+	// Get a list of all the expense_tags
+	$expense_tags_vocabulary = taxonomy_vocabulary_machine_name_load('expense');
+	$terms = taxonomy_get_tree($expense_tags_vocabulary->vid);
+
+	$expense_tags_terms = array();
+
+	// TODO: Add an empty row first
+
+	foreach($terms as $term) {
+		$expense_tags_terms[$term->tid] = $term->name;
+	}
+
+	$tids = array_keys($expense_tags_terms);
+	$default_value = $tids[0];
+
+  $form['expense_tags'] = array(
+			'#type' => 'select',
+			'#title' => t('Expense tags'),
+			'#default_value' => $default_value,
+			'#options' => $expense_tags_terms,
+			);
+
+	$form['submit_button'] = array(
+		'#type' => 'submit',
+		'#value' => t('Set new tags'),
+	);
+
+	return $form;
+
+	// TODO: Check GET value, if not set use not set
+
+
+	// TODO: Get GET parameter to check if some special stuff has been selected
+	$nodes_list = node_load_multiple(array(), array('type' => 'expensetype'));
+	
+	$nodes = array();
+
+	$count = 0;
+
+	foreach ($nodes_list as $node) {
+		// This will be false since we have not yet set any taxonomies on it. 0 equals false
+		$is_categorized = $node->field_is_categorized[$node->language][0]['value'];
+
+		// If it's already categorized, skip it
+		if ($is_categorized == 1) {
+			continue;
+		}
+
+		// So we don't get timeout if there are too many
+		$count = $count+1;
+		if ($count > 50) {
+			break;
 		}
 
 		$nid = $node->nid;
@@ -198,26 +355,6 @@ function bankstat_view_all_form($form, &$form_state) {
 }
 
 
-
-function bankstat_view_all_form_submit($form, &$form_state) {
-	// Get all selected values
-
-	$selected_nids = array_keys(array_filter($form_state['values']['selected_nids']));
-
-	$expense_tag_tid = intval($form_state['values']['expense_tags']);
-
-	foreach ($selected_nids as $nid) {
-		$node = node_load($nid);
-		$node->field_tag[$node->language][0]['tid'] = $expense_tag_tid;
-		// Now we can say that this node is categorized
-		$node->field_is_categorized[$node->language][0]['value'] = 1;
-		node_save($node);
-	}
-
-	drupal_set_message(t('Sucessfully set new tags'));
-}
-
-
 // Might be better to create a form, so one can choose what fields
 // should be included, and when clicking submit one is passed back
 // to the same page so that we know what to render
@@ -240,7 +377,7 @@ function bankstat_statistics($form, &$form_state) {
 	}
 
 
-	var_dump($expense_tag_tids);
+	//var_dump($expense_tag_tids);
 
 	//die();
 
@@ -251,8 +388,8 @@ function bankstat_statistics($form, &$form_state) {
 		->fieldCondition('field_tag','tid', $expense_tag_tids, 'IN') 
 		->execute();
 
-	echo "<br/><br/> node result: <br/>";
-	var_dump($result);
+	//echo "<br/><br/> node result: <br/>";
+	//var_dump($result);
 
 
 	// TODO: Sum all costs
