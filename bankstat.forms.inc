@@ -133,7 +133,7 @@ function bankstat_view_all_form($form, &$form_state) {
 	$nodes = array();
 
 	$count = 0;
-	$limit = 50;
+	$limit = 300;
 
 	foreach ($nodes_list as $node) {
 		// This will be false since we have not yet set any taxonomies on it. 0 equals false
@@ -198,7 +198,7 @@ function bankstat_view_all_form($form, &$form_state) {
 
 	$expense_tags_terms = array();
 
-	// TODO: Add an empty row first
+	$expense_tags_terms[0] = '<' . t('Create new term') . '>';
 
 	foreach($terms as $term) {
 		$expense_tags_terms[$term->tid] = $term->name;
@@ -208,11 +208,18 @@ function bankstat_view_all_form($form, &$form_state) {
 	$default_value = $tids[0];
 
   $form['expense_tags'] = array(
+			'#id' => 'expense_tags',
 			'#type' => 'select',
 			'#title' => t('Expense tags'),
 			'#default_value' => $default_value,
 			'#options' => $expense_tags_terms,
-			);
+	);
+
+	$form['new_tag'] = array(
+		'#id' => 'new_tag',
+		'#type' => 'textfield',
+		'#title' => t('New tag'),
+	);
 
 	$form['submit_button'] = array(
 		'#type' => 'submit',
@@ -229,7 +236,30 @@ function bankstat_view_all_form_submit($form, &$form_state) {
 
 	$selected_nids = array_keys(array_filter($form_state['values']['selected_nids']));
 
-	$expense_tag_tid = intval($form_state['values']['expense_tags']);
+	$expense_tag_dropdown_tid = intval($form_state['values']['expense_tags']);
+
+	if ($expense_tag_dropdown_tid == 0) {
+		//echo "new tag used <br/>";
+		// Create new term
+		$expense_tags_vocabulary = taxonomy_vocabulary_machine_name_load('expense');
+		//https://api.drupal.org/api/drupal/modules!taxonomy!taxonomy.module/function/taxonomy_term_save/7
+		$term = new stdClass();
+		$term->name = $form_state['values']['new_tag'];
+		$term->vid = $expense_tags_vocabulary->vid;
+		taxonomy_term_save($term);
+		$expense_tag_tid = $term->tid;
+		//echo "<br/>new tag created with name " . $term->name . ", tid: " . $expense_tag_tid . "<br/>";
+
+	} else {
+		$expense_tag_tid = $expense_tag_dropdown_tid;
+	}
+
+	//echo "<br/><br/>expense tag tid: " . $expense_tag_tid;
+	$term = taxonomy_term_load($expense_tag_tid);
+
+
+	$tag_name = $term->name;
+	$number = count($selected_nids);	
 
 	foreach ($selected_nids as $nid) {
 		$node = node_load($nid);
@@ -239,7 +269,7 @@ function bankstat_view_all_form_submit($form, &$form_state) {
 		node_save($node);
 	}
 
-	drupal_set_message(t('Sucessfully set new tags'));
+	drupal_set_message(t('Successfully set @number items to @tag', array('@number' => $number, '@tag' => $tag_name)));
 }
 
 function bankstat_view_node_expensetype_form($form, &$form_state) {
