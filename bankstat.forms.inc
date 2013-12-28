@@ -405,17 +405,45 @@ function bankstat_statistics($form, &$form_state) {
 		
 	}
 
+
+	// Uses the https://drupal.org/project/google_chart_tools module
+	$form['my_markup'] = array(
+	  '#markup' => '<div id="piechart" style="width: 900px; height: 500px;"></div>',
+	);
+
 	$result = bankstat_get_tid_sum($expense_tag_tids);
 
-	echo "<br/><br/> node result: <br/>";
+	$settings['chart']['chartOne'] = array(
+			'header' => array('Apple', 'Banana', 'Mango'),
+			//'header' => $result['columns'],
+			'rows' => array(array(12, 6, 8)),
+			//'rows' => $result['rows'],
+			'columns' => array('Fruit count'),
+			'chartType' => 'PieChart',
+			'containerId' =>  'piechart',
+			'options' => array(
+				'forceIFrame' => FALSE,
+				'title' => 'Fruit count',
+				'width' => 800,
+				'height' => 400
+				)
+			);
+	//Draw it.
+	$ret = draw_chart($settings);
+
+
+	//echo "<br/><br/> node result: <br/>";
 	//var_dump($result);
-	foreach ($result as $row) {
-		var_dump($row);
-		echo "<br/><br/>";
-	}
+	//foreach ($result as $row) {
+	//	var_dump($row);
+	//	echo "<br/><br/>";
+	//}
 
-	die();
+	//var_dump($result['columns']);
 
+	//die();
+
+	return $form;
 }
 
 function bankstat_get_tid_sum($tids) {
@@ -449,7 +477,21 @@ function bankstat_get_tid_sum($tids) {
 	$query->condition('field_amount_value', '0', '<');
 	$query->orderBy('sum(field_amount_value)');
 
-	$result = $query->execute()->fetchAll();
+	$query_result = $query->execute()->fetchAll();
+
+	$result = array('columns' => array(),
+		'rows' => array());
+
+
+
+	foreach ($query_result as $row) {
+		//echo "row: ";
+		//var_dump($row);
+		//echo "<br/><br/>";
+		$result['columns'][] = $row->name;
+		$result['rows'][] = intval($row->Total);
+	}
+
 
 	return $result;
 }
