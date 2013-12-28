@@ -2,4 +2,4 @@ name = Bankstat
 description = Imports bank files and visualizes the data
 core = 7.x
 package = Custom modules
-files[] = bankstat.module
+files[] = bankstat.module 

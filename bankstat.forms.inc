@@ -397,12 +397,15 @@ function bankstat_statistics($form, &$form_state) {
 
 	// TODO: Get chosen date intervals
 
-	$expense_tag_tids = array('2', '3');
+	$all_terms = bankstat_get_all_terms();
+
+	//$expense_tag_tids = array('2', '7', '8');
+	$expense_tag_tids = array();
 
 	if (isset($_GET['expense_tags'])) {
 		$expense_tag_tids = json_decode($_GET['expense_tags']);
 	} else {
-		
+		$expense_tag_tids = array_keys($all_terms);
 	}
 
 
@@ -424,17 +427,20 @@ function bankstat_statistics($form, &$form_state) {
 
 	//die();
 
-	$terms = array();
 
-	// Get list of terms somewhere else from?
-	for ($i = 0; $i < count($result['columns']); $i++) {
-		$terms[$result['tids'][$i]] = $result['columns'][$i] . ' - ' . $result['rows'][$i];
-	}
+	//var_dump($all_terms);
+	//die();
 
 	$form['selected_tids'] = array(
 		'#type' => 'checkboxes',
 		'#title' => t('Terms'),
-		'#options' => $terms,
+		'#options' => $all_terms,
+		'#default_value' => $expense_tag_tids,
+	);
+
+	$form['submit_button'] = array(
+		'#type' => 'submit',
+		'#value' => t('Show'),
 	);
 
 	$settings['chart']['chartOne'] = array(
@@ -458,6 +464,17 @@ function bankstat_statistics($form, &$form_state) {
 	return $form;
 }
 
+function bankstat_statistics_submit($form, &$form_state) {
+	$selected_tids = array_keys(array_filter($form_state['values']['selected_tids']));
+
+	drupal_goto(current_path(), array(
+		'query' => array(
+			'expense_tags' => drupal_json_encode($selected_tids),
+		)
+	));
+
+}
+
 function bankstat_get_tid_sum($tids) {
 	//$query = db_select('node', 'n');
 	//$query->join('field_data_field_amount', 'Amount', 'Amount.entity_id = n.nid');
@@ -479,6 +496,12 @@ function bankstat_get_tid_sum($tids) {
 	$query->addExpression('sum(field_amount_value)', 'Total');
 	$query->condition('n.type', 'expensetype', '=');
 	$query->condition('field_amount_value', '0', '<');
+
+	// Specify specific terms to show
+	if (count($tids) > 0) {
+		$query->condition('Term.tid', $tids, 'in');
+	}
+
 	$query->orderBy('sum(field_amount_value)');
 
 	$query_result = $query->execute()->fetchAll();
@@ -494,6 +517,28 @@ function bankstat_get_tid_sum($tids) {
 		// Graphs can't handle negative amounts
 		$result['rows'][] = abs(intval($row->Total));
 		$result['tids'][] = $row->tid;
+	}
+
+	return $result;
+}
+
+
+function bankstat_get_all_terms() {
+	$query = db_select('node', 'n');
+	$query->join('field_data_field_tag', 'Tag', 'Tag.entity_id = n.nid');
+	$query->join('taxonomy_term_data', 'Term', 'Term.tid = Tag.field_tag_tid');
+	$query->groupBy('name');
+	$query->fields('Term', array('name'));
+	$query->fields('Term', array('tid'));
+	$query->condition('n.type', 'expensetype', '=');
+	$query->orderBy('name');
+
+	$query_result = $query->execute()->fetchAll();
+
+	$result = array();
+
+	foreach ($query_result as $row) {
+		$result[$row->tid] = $row->name;
 	}
 
 	return $result;
