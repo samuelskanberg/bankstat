@@ -408,12 +408,13 @@ function bankstat_statistics($form, &$form_state) {
 		$expense_tag_tids = array_keys($all_terms);
 	}
 
-	$selected_months = array('2013-01');
+	$selected_months = array();
 
-	if (isset($_GET['expense_tags'])) {
+	if (isset($_GET['months'])) {
 		$selected_months = json_decode($_GET['months']);
 	} else {
-		//$selected_months = array_keys($all_months);
+		// Default: latest month
+		$selected_months = array(max($all_months));
 	}
 
 	// Uses the https://drupal.org/project/google_chart_tools module
@@ -441,10 +442,13 @@ function bankstat_statistics($form, &$form_state) {
 	//var_dump($all_months);
 	//die();
 
+	// To make it associate
+	$all_months_options = array_combine($all_months, $all_months);
+
 	$form['selected_months'] = array(
 		'#type' => 'checkboxes',
 		'#title' => t('Months'),
-		'#options' => $all_months,
+		'#options' => $all_months_options,
 		'#default_value' => $selected_months,
 	);
 
@@ -483,10 +487,12 @@ function bankstat_statistics($form, &$form_state) {
 
 function bankstat_statistics_submit($form, &$form_state) {
 	$selected_tids = array_keys(array_filter($form_state['values']['selected_tids']));
+	$selected_months = array_keys(array_filter($form_state['values']['selected_months']));
 
 	drupal_goto(current_path(), array(
 		'query' => array(
 			'expense_tags' => drupal_json_encode($selected_tids),
+			'months' => drupal_json_encode($selected_months),
 		)
 	));
 
