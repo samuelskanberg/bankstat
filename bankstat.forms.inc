@@ -133,7 +133,7 @@ function bankstat_view_all_form($form, &$form_state) {
 	$nodes = array();
 
 	$count = 0;
-	$limit = 300;
+	$limit = 1000;
 
 	foreach ($nodes_list as $node) {
 		// This will be false since we have not yet set any taxonomies on it. 0 equals false
@@ -390,7 +390,6 @@ function bankstat_view_node_expensetype_form($form, &$form_state) {
 // to the same page so that we know what to render
 
 function bankstat_statistics($form, &$form_state) {
-	$query = new EntityFieldQuery;
 
 	// TODO: Get GET variables
 	
@@ -406,21 +405,40 @@ function bankstat_statistics($form, &$form_state) {
 		
 	}
 
+	$result = bankstat_get_tid_sum($expense_tag_tids);
 
-	//var_dump($expense_tag_tids);
-
-	//die();
-
-	// Get list of nodes with enity type
-	$result = $query
-		->entityCondition('entity_type', 'node')
-		->propertyCondition('status', 1)
-		->fieldCondition('field_tag','tid', $expense_tag_tids, 'IN') 
-		->execute();
-
-	//echo "<br/><br/> node result: <br/>";
+	echo "<br/><br/> node result: <br/>";
 	//var_dump($result);
+	foreach ($result as $row) {
+		var_dump($row);
+		echo "<br/><br/>";
+	}
 
+	die();
 
-	// TODO: Sum all costs
+}
+
+function bankstat_get_tid_sum($tids) {
+	//$query = new EntityFieldQuery;
+
+	//// Get list of nodes with enity type
+	//$result = $query
+	//	->entityCondition('entity_type', 'node')
+	//	->propertyCondition('status', 1)
+	//	->fieldCondition('field_tag','tid', $expense_tag_tids, 'IN') 
+	//	->execute();
+
+	$query = db_select('node', 'n');
+	$query->join('field_data_field_amount', 'Amount', 'Amount.entity_id = n.nid');
+	$query->join('field_data_field_tag', 'Tag', 'Tag.entity_id = n.nid');
+	$query->join('taxonomy_term_data', 'Term', 'Term.tid = Tag.field_tag_tid');
+	$query->fields('n', array('title'));
+	$query->fields('Amount', array('field_amount_value'));
+	$query->fields('Tag', array('field_tag_tid'));
+	$query->fields('Term', array('name'));
+	$query->condition('n.type', 'expensetype', '=');
+
+	$result = $query->execute()->fetchAll();
+
+	return $result;
 }
