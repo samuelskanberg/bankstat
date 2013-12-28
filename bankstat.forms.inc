@@ -428,15 +428,26 @@ function bankstat_get_tid_sum($tids) {
 	//	->fieldCondition('field_tag','tid', $expense_tag_tids, 'IN') 
 	//	->execute();
 
+	//$query = db_select('node', 'n');
+	//$query->join('field_data_field_amount', 'Amount', 'Amount.entity_id = n.nid');
+	//$query->join('field_data_field_tag', 'Tag', 'Tag.entity_id = n.nid');
+	//$query->join('taxonomy_term_data', 'Term', 'Term.tid = Tag.field_tag_tid');
+	//$query->fields('n', array('title'));
+	//$query->fields('Amount', array('field_amount_value'));
+	//$query->fields('Tag', array('field_tag_tid'));
+	//$query->fields('Term', array('name'));
+	//$query->condition('n.type', 'expensetype', '=');
+
 	$query = db_select('node', 'n');
 	$query->join('field_data_field_amount', 'Amount', 'Amount.entity_id = n.nid');
 	$query->join('field_data_field_tag', 'Tag', 'Tag.entity_id = n.nid');
 	$query->join('taxonomy_term_data', 'Term', 'Term.tid = Tag.field_tag_tid');
-	$query->fields('n', array('title'));
-	$query->fields('Amount', array('field_amount_value'));
-	$query->fields('Tag', array('field_tag_tid'));
+	$query->groupBy('name');
 	$query->fields('Term', array('name'));
+	$query->addExpression('sum(field_amount_value)', 'Total');
 	$query->condition('n.type', 'expensetype', '=');
+	$query->condition('field_amount_value', '0', '<');
+	$query->orderBy('sum(field_amount_value)');
 
 	$result = $query->execute()->fetchAll();
 
