@@ -413,25 +413,6 @@ function bankstat_statistics($form, &$form_state) {
 
 	$result = bankstat_get_tid_sum($expense_tag_tids);
 
-	$settings['chart']['chartOne'] = array(
-			'header' => array('Apple', 'Banana', 'Mango'),
-			//'header' => $result['columns'],
-			'rows' => array(array(12, 6, 8)),
-			//'rows' => $result['rows'],
-			'columns' => array('Fruit count'),
-			'chartType' => 'PieChart',
-			'containerId' =>  'piechart',
-			'options' => array(
-				'forceIFrame' => FALSE,
-				'title' => 'Fruit count',
-				'width' => 800,
-				'height' => 400
-				)
-			);
-	//Draw it.
-	$ret = draw_chart($settings);
-
-
 	//echo "<br/><br/> node result: <br/>";
 	//var_dump($result);
 	//foreach ($result as $row) {
@@ -443,19 +424,41 @@ function bankstat_statistics($form, &$form_state) {
 
 	//die();
 
+	$terms = array();
+
+	// Get list of terms somewhere else from?
+	for ($i = 0; $i < count($result['columns']); $i++) {
+		$terms[$result['tids'][$i]] = $result['columns'][$i] . ' - ' . $result['rows'][$i];
+	}
+
+	$form['selected_tids'] = array(
+		'#type' => 'checkboxes',
+		'#title' => t('Terms'),
+		'#options' => $terms,
+	);
+
+	$settings['chart']['chartOne'] = array(
+			'header' => $result['columns'],
+			'rows' => array($result['rows']),
+			'columns' => array('Utgifter'),
+			'chartType' => 'PieChart',
+			'containerId' =>  'piechart',
+			'options' => array(
+				'forceIFrame' => FALSE,
+				'title' => 'Utgifter',
+				'width' => 800,
+				'height' => 400
+				)
+			);
+	//Draw it.
+	$ret = draw_chart($settings);
+
+
+
 	return $form;
 }
 
 function bankstat_get_tid_sum($tids) {
-	//$query = new EntityFieldQuery;
-
-	//// Get list of nodes with enity type
-	//$result = $query
-	//	->entityCondition('entity_type', 'node')
-	//	->propertyCondition('status', 1)
-	//	->fieldCondition('field_tag','tid', $expense_tag_tids, 'IN') 
-	//	->execute();
-
 	//$query = db_select('node', 'n');
 	//$query->join('field_data_field_amount', 'Amount', 'Amount.entity_id = n.nid');
 	//$query->join('field_data_field_tag', 'Tag', 'Tag.entity_id = n.nid');
@@ -472,6 +475,7 @@ function bankstat_get_tid_sum($tids) {
 	$query->join('taxonomy_term_data', 'Term', 'Term.tid = Tag.field_tag_tid');
 	$query->groupBy('name');
 	$query->fields('Term', array('name'));
+	$query->fields('Term', array('tid'));
 	$query->addExpression('sum(field_amount_value)', 'Total');
 	$query->condition('n.type', 'expensetype', '=');
 	$query->condition('field_amount_value', '0', '<');
@@ -479,19 +483,18 @@ function bankstat_get_tid_sum($tids) {
 
 	$query_result = $query->execute()->fetchAll();
 
-	$result = array('columns' => array(),
-		'rows' => array());
-
-
+	$result = array(
+		'columns' => array(),
+		'rows' => array(),
+		'tids' => array(),
+	);
 
 	foreach ($query_result as $row) {
-		//echo "row: ";
-		//var_dump($row);
-		//echo "<br/><br/>";
 		$result['columns'][] = $row->name;
-		$result['rows'][] = intval($row->Total);
+		// Graphs can't handle negative amounts
+		$result['rows'][] = abs(intval($row->Total));
+		$result['tids'][] = $row->tid;
 	}
-
 
 	return $result;
 }
