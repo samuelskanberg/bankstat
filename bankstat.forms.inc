@@ -398,8 +398,8 @@ function bankstat_statistics($form, &$form_state) {
 	// TODO: Get chosen date intervals
 
 	$all_terms = bankstat_get_all_terms();
+	$all_months = bankstat_get_all_months();
 
-	//$expense_tag_tids = array('2', '7', '8');
 	$expense_tag_tids = array();
 
 	if (isset($_GET['expense_tags'])) {
@@ -408,13 +408,20 @@ function bankstat_statistics($form, &$form_state) {
 		$expense_tag_tids = array_keys($all_terms);
 	}
 
+	$selected_months = array('2013-01');
+
+	if (isset($_GET['expense_tags'])) {
+		$selected_months = json_decode($_GET['months']);
+	} else {
+		//$selected_months = array_keys($all_months);
+	}
 
 	// Uses the https://drupal.org/project/google_chart_tools module
 	$form['my_markup'] = array(
 	  '#markup' => '<div id="piechart" style="width: 900px; height: 500px;"></div>',
 	);
 
-	$result = bankstat_get_tid_sum($expense_tag_tids);
+	$result = bankstat_get_tid_sum($expense_tag_tids, $selected_months);
 
 	//echo "<br/><br/> node result: <br/>";
 	//var_dump($result);
@@ -430,6 +437,16 @@ function bankstat_statistics($form, &$form_state) {
 
 	//var_dump($all_terms);
 	//die();
+
+	//var_dump($all_months);
+	//die();
+
+	$form['selected_months'] = array(
+		'#type' => 'checkboxes',
+		'#title' => t('Months'),
+		'#options' => $all_months,
+		'#default_value' => $selected_months,
+	);
 
 	$form['selected_tids'] = array(
 		'#type' => 'checkboxes',
@@ -475,7 +492,7 @@ function bankstat_statistics_submit($form, &$form_state) {
 
 }
 
-function bankstat_get_tid_sum($tids) {
+function bankstat_get_tid_sum($tids, $months) {
 	//$query = db_select('node', 'n');
 	//$query->join('field_data_field_amount', 'Amount', 'Amount.entity_id = n.nid');
 	//$query->join('field_data_field_tag', 'Tag', 'Tag.entity_id = n.nid');
@@ -490,6 +507,7 @@ function bankstat_get_tid_sum($tids) {
 	$query->join('field_data_field_amount', 'Amount', 'Amount.entity_id = n.nid');
 	$query->join('field_data_field_tag', 'Tag', 'Tag.entity_id = n.nid');
 	$query->join('taxonomy_term_data', 'Term', 'Term.tid = Tag.field_tag_tid');
+	$query->join('field_data_field_transaction_date', 'TransactionDate', 'TransactionDate.entity_id = n.nid');
 	$query->groupBy('name');
 	$query->fields('Term', array('name'));
 	$query->fields('Term', array('tid'));
@@ -500,6 +518,21 @@ function bankstat_get_tid_sum($tids) {
 	// Specify specific terms to show
 	if (count($tids) > 0) {
 		$query->condition('Term.tid', $tids, 'in');
+	}
+
+	// Specify start date and end date
+	if (count($months) > 0) {
+		$min_month = min($months);
+		$max_month = max($months);
+
+		$start_date = new DateTime($min_month . '-01');
+		$start_date = $start_date->format('Y-m-d');
+		$end_date = new DateTime($max_month . '-01');
+		$end_date->modify('first day of next month');
+		$end_date = $end_date->format('Y-m-d');
+
+		$query->condition('TransactionDate.field_transaction_date_value', $start_date, '>');
+		$query->condition('TransactionDate.field_transaction_date_value', $end_date, '<');
 	}
 
 	$query->orderBy('sum(field_amount_value)');
@@ -542,4 +575,25 @@ function bankstat_get_all_terms() {
 	}
 
 	return $result;
+}
+
+
+function bankstat_get_all_months() {
+	$query = db_select('node', 'n');
+	$query->join('field_data_field_tag', 'Tag', 'Tag.entity_id = n.nid');
+	$query->join('field_data_field_transaction_date', 'TransactionDate', 'TransactionDate.entity_id = n.nid');
+	$query->addExpression('SUBSTRING(TransactionDate.field_transaction_date_value, 1, 7)', 'YearMonth');
+	$query->groupBy('SUBSTRING(TransactionDate.field_transaction_date_value, 1, 7)');
+	$query->condition('n.type', 'expensetype', '=');
+
+	$query_result = $query->execute()->fetchAll();
+
+	$result = array();
+
+	foreach ($query_result as $row) {
+		$result[] = $row->YearMonth;
+	}
+
+	return $result;
+	
 }
