@@ -524,7 +524,7 @@ function bankstat_statistics_linechart($form, &$form_state) {
 
 	// Uses the https://drupal.org/project/google_chart_tools module
 	$form['my_markup'] = array(
-	  '#markup' => '<div id="chart" style="width: 900px; height: 500px;"></div>',
+	  '#markup' => '<div id="chart" style="width: 800px; height: 600px;"></div>',
 	);
 
 	$form['start_date'] = array(
@@ -556,12 +556,13 @@ function bankstat_statistics_linechart($form, &$form_state) {
 			'rows' => array_values($result['values']),
 			'columns' => array_keys($result['values']),
 			'chartType' => 'LineChart',
+			//'chartType' => 'ColumnChart',
 			'containerId' =>  'chart',
 			'options' => array(
 				'forceIFrame' => FALSE,
 				'title' => 'Utgifter',
 				'width' => 800,
-				'height' => 400
+				'height' => 600
 				)
 			);
 	//Draw it.
