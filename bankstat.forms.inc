@@ -385,10 +385,6 @@ function bankstat_view_node_expensetype_form($form, &$form_state) {
 }
 
 
-// Might be better to create a form, so one can choose what fields
-// should be included, and when clicking submit one is passed back
-// to the same page so that we know what to render
-
 function bankstat_statistics($form, &$form_state) {
 
 	// TODO: Get GET variables
@@ -419,7 +415,7 @@ function bankstat_statistics($form, &$form_state) {
 
 	// Uses the https://drupal.org/project/google_chart_tools module
 	$form['my_markup'] = array(
-	  '#markup' => '<div id="piechart" style="width: 900px; height: 500px;"></div>',
+	  '#markup' => '<div id="chart" style="width: 900px; height: 500px;"></div>',
 	);
 
 	$result = bankstat_get_tid_sum($expense_tag_tids, $selected_months);
@@ -431,7 +427,7 @@ function bankstat_statistics($form, &$form_state) {
 	//	echo "<br/><br/>";
 	//}
 
-	//var_dump($result['columns']);
+	//var_dump($result['names']);
 
 	//die();
 
@@ -465,11 +461,11 @@ function bankstat_statistics($form, &$form_state) {
 	);
 
 	$settings['chart']['chartOne'] = array(
-			'header' => $result['columns'],
-			'rows' => array($result['rows']),
+			'header' => $result['names'],
+			'rows' => array($result['sums']),
 			'columns' => array('Utgifter'),
 			'chartType' => 'PieChart',
-			'containerId' =>  'piechart',
+			'containerId' =>  'chart',
 			'options' => array(
 				'forceIFrame' => FALSE,
 				'title' => 'Utgifter',
@@ -498,17 +494,107 @@ function bankstat_statistics_submit($form, &$form_state) {
 
 }
 
-function bankstat_get_tid_sum($tids, $months) {
-	//$query = db_select('node', 'n');
-	//$query->join('field_data_field_amount', 'Amount', 'Amount.entity_id = n.nid');
-	//$query->join('field_data_field_tag', 'Tag', 'Tag.entity_id = n.nid');
-	//$query->join('taxonomy_term_data', 'Term', 'Term.tid = Tag.field_tag_tid');
-	//$query->fields('n', array('title'));
-	//$query->fields('Amount', array('field_amount_value'));
-	//$query->fields('Tag', array('field_tag_tid'));
-	//$query->fields('Term', array('name'));
-	//$query->condition('n.type', 'expensetype', '=');
+function bankstat_statistics_linechart($form, &$form_state) {
+	$all_terms = bankstat_get_all_terms();
 
+	$first_date = bankstat_first_date();
+	$last_date = bankstat_last_date();
+
+	$expense_tag_tids = array();
+
+	if (isset($_GET['expense_tags'])) {
+		$expense_tag_tids = json_decode($_GET['expense_tags']);
+	} else {
+		$expense_tag_tids = array_keys($all_terms);
+	}
+
+
+	if (isset($_GET['start_date'])) {
+		$start_date = json_decode($_GET['start_date']);
+	} else {
+		$start_date = $first_date;
+	}
+
+	if (isset($_GET['end_date'])) {
+		$end_date = json_decode($_GET['end_date']);
+	} else {
+		$end_date = $first_date;
+	}
+
+
+	// Uses the https://drupal.org/project/google_chart_tools module
+	$form['my_markup'] = array(
+	  '#markup' => '<div id="chart" style="width: 900px; height: 500px;"></div>',
+	);
+
+	$form['start_date'] = array(
+		'#type' => 'date',
+		'#title' => 'Start date',
+	);
+
+	$form['end_date'] = array(
+		'#type' => 'date',
+		'#title' => 'End date',
+	);
+
+	$form['submit_button'] = array(
+		'#type' => 'submit',
+		'#value' => t('Show'),
+	);
+
+	$result = bankstat_get_tid_sum_over_time($expense_tag_tids, $start_date, $end_date);
+
+	$foo = array('Flap', 'Flip');
+	$values = array(
+		//array(2000, 2001),
+		array(5, 10),
+		array(6, 9),
+	);
+
+	$settings['chart']['chartOne'] = array(
+			//'header' => array('2012-04', '2012-05'),
+			'header' => $result['YearMonth'],
+			'rows' => $values,
+			'columns' => $foo,
+			'chartType' => 'LineChart',
+			'containerId' =>  'chart',
+			'options' => array(
+				'forceIFrame' => FALSE,
+				'title' => 'Utgifter',
+				'width' => 800,
+				'height' => 400
+				)
+			);
+	//Draw it.
+	$ret = draw_chart($settings);
+
+
+	//$foo = array('2001', '2002');
+	//$values = array(
+	//	array(5, 10),
+	//	array(6, 9),
+	//);
+
+	//$settings['chart']['chartOne'] = array(
+	//		'header' => $foo,
+	//		'rows' => $values,
+	//		'columns' => array('Utgifter', 'Spify'),
+	//		'chartType' => 'LineChart',
+	//		'containerId' =>  'chart',
+	//		'options' => array(
+	//			'forceIFrame' => FALSE,
+	//			'title' => 'Utgifter',
+	//			'width' => 800,
+	//			'height' => 400
+	//			)
+	//		);
+	////Draw it.
+	//$ret = draw_chart($settings);
+
+	return $form;
+}
+
+function bankstat_get_tid_sum($tids, $months) {
 	$query = db_select('node', 'n');
 	$query->join('field_data_field_amount', 'Amount', 'Amount.entity_id = n.nid');
 	$query->join('field_data_field_tag', 'Tag', 'Tag.entity_id = n.nid');
@@ -546,21 +632,73 @@ function bankstat_get_tid_sum($tids, $months) {
 	$query_result = $query->execute()->fetchAll();
 
 	$result = array(
-		'columns' => array(),
-		'rows' => array(),
+		'names' => array(),
+		'sums' => array(),
 		'tids' => array(),
 	);
 
 	foreach ($query_result as $row) {
-		$result['columns'][] = $row->name;
+		$result['names'][] = $row->name;
 		// Graphs can't handle negative amounts
-		$result['rows'][] = abs(intval($row->Total));
+		$result['sums'][] = abs(intval($row->Total));
 		$result['tids'][] = $row->tid;
 	}
 
 	return $result;
 }
 
+
+function bankstat_get_tid_sum_over_time($tids, $start_date, $end_date) {
+	$all_months = bankstat_get_all_months();
+
+	// Create first column, the x axis
+	$stat = array(
+		'YearMonth' => array(),
+	);
+
+	//$stat = array();
+
+	// Create a column for each term name
+	// For y axis
+	foreach ($tids as $tid) {
+		$term = taxonomy_term_load($tid);
+		$stat[$term->name] = array();;
+	}
+
+	$stat_keys = array_keys($stat);
+
+	foreach (array_slice($all_months, 0, 2) as $month) {
+	//foreach ($all_months as $month) {
+		// Make it a string
+		$stat['YearMonth'][] = '' . $month;
+		// Set zero for all columns so that all have a value, even if they are not used
+		// Skip first keys because it is "YearMonth"
+		for ($i = 1; $i < count($stat_keys); $i++) {
+			$stat[$stat_keys[$i]][] = 0;
+		}
+
+		$stat_for_month = bankstat_get_tid_sum($tids, array($month));
+
+		for ($i = 0; $i < count($stat_for_month['names']); $i++) {
+			//if (!isset($stat[$stat_for_month['names'][$i]])) {
+			//	$stat[$stat_for_month['names'][$i]] = array();
+			//}
+			$name = $stat_for_month['names'][$i]; 
+
+			// Add the sum last in the array
+			$stat[$name][count($stat[$name])-1] = $stat_for_month['sums'][$i];
+		}
+		// TODO: Some how add them together. However, only removing break won't work
+		//break;	
+	}
+
+	//var_dump($stat);
+
+	//die();
+
+	return $stat;
+
+}
 
 function bankstat_get_all_terms() {
 	$query = db_select('node', 'n');
@@ -602,4 +740,36 @@ function bankstat_get_all_months() {
 
 	return $result;
 	
+}
+
+function bankstat_first_date() {
+	$query = db_select('node', 'n');
+	$query->join('field_data_field_tag', 'Tag', 'Tag.entity_id = n.nid');
+	$query->join('field_data_field_transaction_date', 'TransactionDate', 'TransactionDate.entity_id = n.nid');
+	$query->addExpression('min(TransactionDate.field_transaction_date_value)', 'date');
+	$query->condition('n.type', 'expensetype', '=');
+
+	$query_result = $query->execute()->fetchAll();
+
+	if (count($query_result) > 0) {
+	return $query_result[0]->date;
+	} else {
+		return '1900-01-01';
+	}
+}
+
+function bankstat_last_date() {
+	$query = db_select('node', 'n');
+	$query->join('field_data_field_tag', 'Tag', 'Tag.entity_id = n.nid');
+	$query->join('field_data_field_transaction_date', 'TransactionDate', 'TransactionDate.entity_id = n.nid');
+	$query->addExpression('max(TransactionDate.field_transaction_date_value)', 'date');
+	$query->condition('n.type', 'expensetype', '=');
+
+	$query_result = $query->execute()->fetchAll();
+
+	if (count($query_result) > 0) {
+	return $query_result[0]->date;
+	} else {
+		return '2100-01-01';
+	}
 }

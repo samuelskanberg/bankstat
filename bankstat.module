@@ -32,9 +32,18 @@ function bankstat_menu() {
 
 	$items['bankstat/view/stats'] = array( 
 		'title' => 'Statistics', 
-		'description' => 'The page to view statistics bank data',
+		'description' => 'Page to view statistics bank data',
 		'page callback' => 'drupal_get_form', 
 		'page arguments' => array('bankstat_statistics'),
+		'access callback' => TRUE,
+		'file' => 'bankstat.forms.inc',
+	);
+
+	$items['bankstat/view/linechart'] = array( 
+		'title' => 'Statistics line chart', 
+		'description' => 'Page to view statistics bank data',
+		'page callback' => 'drupal_get_form', 
+		'page arguments' => array('bankstat_statistics_linechart'),
 		'access callback' => TRUE,
 		'file' => 'bankstat.forms.inc',
 	);
