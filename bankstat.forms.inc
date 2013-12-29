@@ -544,18 +544,10 @@ function bankstat_statistics_linechart($form, &$form_state) {
 
 	$result = bankstat_get_tid_sum_over_time($expense_tag_tids, $start_date, $end_date);
 
-	$foo = array('Flap', 'Flip');
-	$values = array(
-		//array(2000, 2001),
-		array(5, 10),
-		array(6, 9),
-	);
-
 	$settings['chart']['chartOne'] = array(
-			//'header' => array('2012-04', '2012-05'),
-			'header' => $result['YearMonth'],
-			'rows' => $values,
-			'columns' => $foo,
+			'header' => $result['header'],
+			'rows' => array_values($result['values']),
+			'columns' => array_keys($result['values']),
 			'chartType' => 'LineChart',
 			'containerId' =>  'chart',
 			'options' => array(
@@ -652,14 +644,12 @@ function bankstat_get_tid_sum_over_time($tids, $start_date, $end_date) {
 	$all_months = bankstat_get_all_months();
 
 	// Create first column, the x axis
-	$stat = array(
-		'YearMonth' => array(),
-	);
+	$header = array();
 
-	//$stat = array();
 
 	// Create a column for each term name
 	// For y axis
+	$stat = array();
 	foreach ($tids as $tid) {
 		$term = taxonomy_term_load($tid);
 		$stat[$term->name] = array();;
@@ -667,13 +657,12 @@ function bankstat_get_tid_sum_over_time($tids, $start_date, $end_date) {
 
 	$stat_keys = array_keys($stat);
 
-	foreach (array_slice($all_months, 0, 2) as $month) {
-	//foreach ($all_months as $month) {
+	//foreach (array_slice($all_months, 0, 5) as $month) {
+	foreach ($all_months as $month) {
 		// Make it a string
-		$stat['YearMonth'][] = '' . $month;
+		$header[] = '' . $month;
 		// Set zero for all columns so that all have a value, even if they are not used
-		// Skip first keys because it is "YearMonth"
-		for ($i = 1; $i < count($stat_keys); $i++) {
+		for ($i = 0; $i < count($stat_keys); $i++) {
 			$stat[$stat_keys[$i]][] = 0;
 		}
 
@@ -692,12 +681,23 @@ function bankstat_get_tid_sum_over_time($tids, $start_date, $end_date) {
 		//break;	
 	}
 
+	//echo "<br/><br/>HEADER<br/><br/>";
+	//var_dump($header);
+
+	//echo "STAT<br/><br/>";
 	//var_dump($stat);
+
+	//echo "<br/><br/>STAT keys<br/><br/>";
+	//var_dump(array_values($stat));
 
 	//die();
 
-	return $stat;
+	$result = array(
+		'header' => $header,
+		'values' => $stat,
+	);
 
+	return $result;
 }
 
 function bankstat_get_all_terms() {
