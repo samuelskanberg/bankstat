@@ -537,6 +537,13 @@ function bankstat_statistics_linechart($form, &$form_state) {
 		'#title' => 'End date',
 	);
 
+	$form['selected_tids'] = array(
+		'#type' => 'checkboxes',
+		'#title' => t('Terms'),
+		'#options' => $all_terms,
+		'#default_value' => $expense_tag_tids,
+	);
+
 	$form['submit_button'] = array(
 		'#type' => 'submit',
 		'#value' => t('Show'),
@@ -584,6 +591,16 @@ function bankstat_statistics_linechart($form, &$form_state) {
 	//$ret = draw_chart($settings);
 
 	return $form;
+}
+
+function bankstat_statistics_linechart_submit($form, &$form_state) {
+	$selected_tids = array_keys(array_filter($form_state['values']['selected_tids']));
+
+	drupal_goto(current_path(), array(
+		'query' => array(
+			'expense_tags' => drupal_json_encode($selected_tids),
+		)
+	));
 }
 
 function bankstat_get_tid_sum($tids, $months) {
