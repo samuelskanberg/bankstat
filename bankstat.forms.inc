@@ -518,7 +518,7 @@ function bankstat_statistics_linechart($form, &$form_state) {
 	if (isset($_GET['end_date'])) {
 		$end_date = json_decode($_GET['end_date']);
 	} else {
-		$end_date = $first_date;
+		$end_date = $last_date;
 	}
 
 
@@ -527,14 +527,30 @@ function bankstat_statistics_linechart($form, &$form_state) {
 	  '#markup' => '<div id="chart" style="width: 800px; height: 600px;"></div>',
 	);
 
+	$start_date_times = explode('-', $start_date);
+	$start_date_default_value = array(
+		'year' => intval($start_date_times[0]),
+		'month' => intval($start_date_times[1]),
+		'day' => intval($start_date_times[2]),
+	);
+
 	$form['start_date'] = array(
 		'#type' => 'date',
 		'#title' => 'Start date',
+		'#default_value' => $start_date_default_value,
+	);
+
+	$end_date_times = explode('-', $end_date);
+	$end_date_default_value = array(
+		'year' => intval($end_date_times[0]),
+		'month' => intval($end_date_times[1]),
+		'day' => intval($end_date_times[2]),
 	);
 
 	$form['end_date'] = array(
 		'#type' => 'date',
 		'#title' => 'End date',
+		'#default_value' => $end_date_default_value,
 	);
 
 	$form['selected_tids'] = array(
@@ -596,10 +612,21 @@ function bankstat_statistics_linechart($form, &$form_state) {
 
 function bankstat_statistics_linechart_submit($form, &$form_state) {
 	$selected_tids = array_keys(array_filter($form_state['values']['selected_tids']));
+	$start_date_a = $form_state['values']['start_date'];
+	$end_date_a = $form_state['values']['end_date'];
+
+	$start_date = new DateTime($start_date_a['year'] . '-' . $start_date_a['month'] . '-' . $start_date_a['day']);
+	$start_date = $start_date->format('Y-m-d');
+
+	$end_date = new DateTime($end_date_a['year'] . '-' . $end_date_a['month'] . '-' . $end_date_a['day']);
+	$end_date = $end_date->format('Y-m-d');
 
 	drupal_goto(current_path(), array(
 		'query' => array(
 			'expense_tags' => drupal_json_encode($selected_tids),
+			'start_date' => drupal_json_encode($start_date),
+			'end_date' => drupal_json_encode($end_date),
+			//'end_date' => $end_date,
 		)
 	));
 }
@@ -659,7 +686,8 @@ function bankstat_get_tid_sum($tids, $months) {
 
 
 function bankstat_get_tid_sum_over_time($tids, $start_date, $end_date) {
-	$all_months = bankstat_get_all_months();
+	//$all_months = bankstat_get_all_months();
+	$all_months = bankstat_get_all_months_between($start_date, $end_date);
 
 	// Create first column, the x axis
 	$header = array();
@@ -758,6 +786,23 @@ function bankstat_get_all_months() {
 
 	return $result;
 	
+}
+
+function bankstat_get_all_months_between($start_date_str, $end_date_str) {
+	$months = array();
+
+	$date_iterator = new DateTime($start_date_str);
+	$end_date = new DateTime($end_date_str);
+
+	while ($date_iterator < $end_date) {
+		$months[] = $date_iterator->format('Y-m');
+		$date_iterator->modify('first day of next month');
+	}
+
+	//var_dump($months);
+	//die();
+
+	return $months;
 }
 
 function bankstat_first_date() {
