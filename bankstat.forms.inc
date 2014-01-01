@@ -631,6 +631,144 @@ function bankstat_statistics_linechart_submit($form, &$form_state) {
 	));
 }
 
+
+function bankstat_statistics_combined($form, &$form_state) {
+	$all_terms = bankstat_get_all_terms();
+
+	$first_date = bankstat_first_date();
+	$last_date = bankstat_last_date();
+
+	$expense_tag_tids = array();
+
+	if (isset($_GET['expense_tags'])) {
+		$expense_tag_tids = json_decode($_GET['expense_tags']);
+	} else {
+		$expense_tag_tids = array_keys($all_terms);
+	}
+
+
+	if (isset($_GET['start_date'])) {
+		$start_date = json_decode($_GET['start_date']);
+	} else {
+		$start_date = $first_date;
+	}
+
+	if (isset($_GET['end_date'])) {
+		$end_date = json_decode($_GET['end_date']);
+	} else {
+		$end_date = $last_date;
+	}
+
+
+	// Uses the https://drupal.org/project/google_chart_tools module
+	$form['linechart'] = array(
+	  '#markup' => '<div id="linechart" style="width: 800px; height: 600px;"></div>',
+	);
+
+	$form['piechart'] = array(
+	  '#markup' => '<div id="piechart" style="width: 800px; height: 400px;"></div>',
+	);
+
+	$start_date_times = explode('-', $start_date);
+	$start_date_default_value = array(
+		'year' => intval($start_date_times[0]),
+		'month' => intval($start_date_times[1]),
+		'day' => intval($start_date_times[2]),
+	);
+
+	$form['start_date'] = array(
+		'#type' => 'date',
+		'#title' => 'Start date',
+		'#default_value' => $start_date_default_value,
+	);
+
+	$end_date_times = explode('-', $end_date);
+	$end_date_default_value = array(
+		'year' => intval($end_date_times[0]),
+		'month' => intval($end_date_times[1]),
+		'day' => intval($end_date_times[2]),
+	);
+
+	$form['end_date'] = array(
+		'#type' => 'date',
+		'#title' => 'End date',
+		'#default_value' => $end_date_default_value,
+	);
+
+	$form['selected_tids'] = array(
+		'#type' => 'checkboxes',
+		'#title' => t('Terms'),
+		'#options' => $all_terms,
+		'#default_value' => $expense_tag_tids,
+	);
+
+	$form['submit_button'] = array(
+		'#type' => 'submit',
+		'#value' => t('Show'),
+	);
+
+	// Result for showing the line chart
+	$linechartResult = bankstat_get_tid_sum_over_time($expense_tag_tids, $start_date, $end_date);
+
+	$settings['chart']['chartOne'] = array(
+			'header' => $linechartResult['header'],
+			'rows' => array_values($linechartResult['values']),
+			'columns' => array_keys($linechartResult['values']),
+			'chartType' => 'LineChart',
+			'containerId' =>  'linechart',
+			'options' => array(
+				'forceIFrame' => FALSE,
+				'title' => 'Utgifter',
+				'width' => 800,
+				'height' => 600
+				)
+			);
+
+
+	// Result for showing the sum over the same time
+	$selected_months = bankstat_get_all_months_between($start_date, $end_date);
+	$piechartResult = bankstat_get_tid_sum($expense_tag_tids, $selected_months);
+
+	$settings['chart']['chartTwo'] = array(
+			'header' => $piechartResult['names'],
+			'rows' => array($piechartResult['sums']),
+			'columns' => array('Utgifter'),
+			'chartType' => 'PieChart',
+			'containerId' =>  'piechart',
+			'options' => array(
+				'forceIFrame' => FALSE,
+				'title' => 'Utgifter',
+				'width' => 800,
+				'height' => 400
+				)
+			);
+
+	//Draw it.
+	$ret = draw_chart($settings);
+
+	return $form;
+}
+
+function bankstat_statistics_combined_submit($form, &$form_state) {
+	$selected_tids = array_keys(array_filter($form_state['values']['selected_tids']));
+	$start_date_a = $form_state['values']['start_date'];
+	$end_date_a = $form_state['values']['end_date'];
+
+	$start_date = new DateTime($start_date_a['year'] . '-' . $start_date_a['month'] . '-' . $start_date_a['day']);
+	$start_date = $start_date->format('Y-m-d');
+
+	$end_date = new DateTime($end_date_a['year'] . '-' . $end_date_a['month'] . '-' . $end_date_a['day']);
+	$end_date = $end_date->format('Y-m-d');
+
+	drupal_goto(current_path(), array(
+		'query' => array(
+			'expense_tags' => drupal_json_encode($selected_tids),
+			'start_date' => drupal_json_encode($start_date),
+			'end_date' => drupal_json_encode($end_date),
+		)
+	));
+}
+
 function bankstat_get_tid_sum($tids, $months) {
 	$query = db_select('node', 'n');
 	$query->join('field_data_field_amount', 'Amount', 'Amount.entity_id = n.nid');

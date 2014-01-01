@@ -48,6 +48,15 @@ function bankstat_menu() {
 		'file' => 'bankstat.forms.inc',
 	);
 
+	$items['bankstat/view/combined'] = array( 
+		'title' => 'Statistics combined charts', 
+		'description' => 'Page to view statistics bank data',
+		'page callback' => 'drupal_get_form', 
+		'page arguments' => array('bankstat_statistics_combined'),
+		'access callback' => TRUE,
+		'file' => 'bankstat.forms.inc',
+	);
+
 	return $items;
 }
 
