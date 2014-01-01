@@ -642,7 +642,8 @@ function bankstat_get_tid_sum($tids, $months) {
 	$query->fields('Term', array('tid'));
 	$query->addExpression('sum(field_amount_value)', 'Total');
 	$query->condition('n.type', 'expensetype', '=');
-	$query->condition('field_amount_value', '0', '<');
+	$query->havingCondition('Total', 0, '<');
+
 
 	// Specify specific terms to show
 	if (count($tids) > 0) {
@@ -715,9 +716,6 @@ function bankstat_get_tid_sum_over_time($tids, $start_date, $end_date) {
 		$stat_for_month = bankstat_get_tid_sum($tids, array($month));
 
 		for ($i = 0; $i < count($stat_for_month['names']); $i++) {
-			//if (!isset($stat[$stat_for_month['names'][$i]])) {
-			//	$stat[$stat_for_month['names'][$i]] = array();
-			//}
 			$name = $stat_for_month['names'][$i]; 
 
 			// Add the sum last in the array
@@ -726,17 +724,6 @@ function bankstat_get_tid_sum_over_time($tids, $start_date, $end_date) {
 		// TODO: Some how add them together. However, only removing break won't work
 		//break;	
 	}
-
-	//echo "<br/><br/>HEADER<br/><br/>";
-	//var_dump($header);
-
-	//echo "STAT<br/><br/>";
-	//var_dump($stat);
-
-	//echo "<br/><br/>STAT keys<br/><br/>";
-	//var_dump(array_values($stat));
-
-	//die();
 
 	$result = array(
 		'header' => $header,
@@ -798,9 +785,6 @@ function bankstat_get_all_months_between($start_date_str, $end_date_str) {
 		$months[] = $date_iterator->format('Y-m');
 		$date_iterator->modify('first day of next month');
 	}
-
-	//var_dump($months);
-	//die();
 
 	return $months;
 }
