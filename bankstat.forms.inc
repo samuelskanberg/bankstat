@@ -281,25 +281,43 @@ function bankstat_assign_all_form($form, &$form_state) {
 		drupal_get_path('module', 'bankstat') . '/bankstat.js',
 	);
 
-	$form['scripttextfield'] = array(
-		'#id' => 'scripttextfield',
-		'#type' => 'textfield',
-		'#title' => t('Script your stuff'),
+	//$form['scripttextfield'] = array(
+	//	'#id' => 'scripttextfield',
+	//	'#type' => 'textfield',
+	//	'#title' => t('Script your stuff'),
+	//);
+
+	//$form['applyscriptbutton'] = array(
+	//	'#id' => 'applyscriptbutton',
+	//	'#type' => 'button',
+	//	'#value' => t('Apply rule'),
+	//	//'#attributes ' => array('onclick' => 'applyPatternOnSelect()'),
+	//);
+
+	$header = array(
+		'date' => 'Date',
+		'amount' => 'Amount',
+		'title' => 'Title',
 	);
 
-	$form['applyscriptbutton'] = array(
-		'#id' => 'applyscriptbutton',
-		'#type' => 'button',
-		'#value' => t('Apply rule'),
-		//'#attributes ' => array('onclick' => 'applyPatternOnSelect()'),
-	);
+	$options = array();
+
+	foreach ($nodes as $node) {
+		$options[$node['nid']] = array(
+			'date' => $node['date'],
+			'amount' => $node['amount'],
+			'title' => $node['title'],
+		);
+	}
 
 	$form['selected_nids'] = array(
-		'#id' => 'selected_nids',
-		'#type' => 'checkboxes',
-		'#title' => t('Nodes'),
-		'#options' => $nodes,
+		'#type' => 'tableselect',
+		'#header' => $header,
+		'#options' => $options,
+		'#empty' => t('No nodes found'),
 	);
+
+
 
 	// Get a list of all the expense_tags
 	$expense_tags_vocabulary = taxonomy_vocabulary_machine_name_load('expense');
@@ -380,7 +398,153 @@ function bankstat_assign_all_form_submit($form, &$form_state) {
 	drupal_set_message(t('Successfully set @number items to @tag', array('@number' => $number, '@tag' => $tag_name)));
 }
 
+function bankstat_assign_all_automatically_form($form, &$form_state) {
+	$limit = 1000;
+	$nodes = bankstat_get_untagged_nids_with_description_and_suggested_term($limit);
 
+	$form['#attached']['js'] = array(
+		drupal_get_path('module', 'bankstat') . '/bankstat.js',
+	);
+
+	$form['scripttextfield'] = array(
+		'#id' => 'scripttextfield',
+		'#type' => 'textfield',
+		'#title' => t('Script your stuff'),
+	);
+
+	$form['applyscriptbutton'] = array(
+		'#id' => 'applyscriptbutton',
+		'#type' => 'button',
+		'#value' => t('Apply rule'),
+		//'#attributes ' => array('onclick' => 'applyPatternOnSelect()'),
+	);
+
+	//$form['selected_nids'] = array(
+	//	'#id' => 'selected_nids',
+	//	'#type' => 'checkboxes',
+	//	'#title' => t('Nodes'),
+	//	//'#options' => $nodes,
+	//	'#options' => array(1 => 'Whatever <b>massive</b>', 2 => 'Something <b>else</b>'),
+	//);
+
+	$header = array(
+		'date' => 'Date',
+		'amount' => 'Amount',
+		'title' => 'Title',
+	);
+
+	$options = array();
+
+	$nodesa = array(
+		array('nid' => 1, 'date' => '2013-01-01', 'amount' => 234, 'title' => 'Willys'),
+		array('nid' => 2, 'date' => '2013-01-02', 'amount' => 533, 'title' => 'ICA'),
+	);
+
+	foreach ($nodesa as $node) {
+		$options[$node['nid']] = array(
+			'date' => $node['date'],
+			'amount' => $node['amount'],
+			'title' => $node['title'],
+		);
+	}
+
+	$form['selected_nids'] = array(
+		'#type' => 'tableselect',
+		'#header' => $header,
+		'#options' => $options,
+		'#empty' => t('No users found'),
+		);
+
+	// Get a list of all the expense_tags
+	$expense_tags_vocabulary = taxonomy_vocabulary_machine_name_load('expense');
+	$terms = taxonomy_get_tree($expense_tags_vocabulary->vid);
+
+	$expense_tags_terms = array();
+
+	$expense_tags_terms[0] = '<' . t('Create new term') . '>';
+
+	foreach($terms as $term) {
+		$expense_tags_terms[$term->tid] = $term->name;
+	}
+
+	$tids = array_keys($expense_tags_terms);
+	$default_value = $tids[0];
+
+  $form['expense_tags'] = array(
+			'#id' => 'expense_tags',
+			'#type' => 'select',
+			'#title' => t('Expense tags'),
+			'#default_value' => $default_value,
+			'#options' => $expense_tags_terms,
+	);
+
+	$form['new_tag'] = array(
+		'#id' => 'new_tag',
+		'#type' => 'textfield',
+		'#title' => t('New tag'),
+	);
+
+	$form['submit_button'] = array(
+		'#type' => 'submit',
+		'#value' => t('Set new tags'),
+	);
+
+	return $form;
+}
+
+
+function bankstat_assign_all_automatically_form_submit($form, &$form_state) {
+	// Get all selected values
+
+	//$selected_nids = array_keys(array_filter($form_state['values']['selected_nids']));
+	$selected_nids = $form_state['values']['selected_nids'];
+	$selected_nids_options = $form['selected_nids']['#options'];
+
+	$expense_tag_dropdown_tid = intval($form_state['values']['expense_tags']);
+
+	echo "selected nids: <br/>";
+	var_dump($selected_nids);
+	echo "<br/>";
+
+	echo "selected nids: <br/>";
+	var_dump($selected_nids_options);
+
+	die();
+	// ------------------------
+
+	if ($expense_tag_dropdown_tid == 0) {
+		//echo "new tag used <br/>";
+		// Create new term
+		$expense_tags_vocabulary = taxonomy_vocabulary_machine_name_load('expense');
+		//https://api.drupal.org/api/drupal/modules!taxonomy!taxonomy.module/function/taxonomy_term_save/7
+		$term = new stdClass();
+		$term->name = $form_state['values']['new_tag'];
+		$term->vid = $expense_tags_vocabulary->vid;
+		taxonomy_term_save($term);
+		$expense_tag_tid = $term->tid;
+		//echo "<br/>new tag created with name " . $term->name . ", tid: " . $expense_tag_tid . "<br/>";
+
+	} else {
+		$expense_tag_tid = $expense_tag_dropdown_tid;
+	}
+
+	//echo "<br/><br/>expense tag tid: " . $expense_tag_tid;
+	$term = taxonomy_term_load($expense_tag_tid);
+
+
+	$tag_name = $term->name;
+	$number = count($selected_nids);	
+
+	foreach ($selected_nids as $nid) {
+		$node = node_load($nid);
+		$node->field_tag[$node->language][0]['tid'] = $expense_tag_tid;
+		// Now we can say that this node is categorized
+		$node->field_is_categorized[$node->language][0]['value'] = 1;
+		node_save($node);
+	}
+
+	drupal_set_message(t('Successfully set @number items to @tag', array('@number' => $number, '@tag' => $tag_name)));
+}
 
 function bankstat_view_node_expensetype_form($form, &$form_state) {
 	// TODO: Load all expense types
@@ -1088,10 +1252,71 @@ function bankstat_get_untagged_nids_with_description($limit = null) {
 	$result = array();
 
 	foreach ($query_result as $row) {
-		$nid = $row->nid;
-		$description = $row->field_transaction_date_value . ', ' . $row->field_amount_value . ' <b>' . $row->title . '</b>';
-		$result[$nid] = $description;
+		//$nid = $row->nid;
+		//$description = $row->field_transaction_date_value . ', ' . $row->field_amount_value . ' <b>' . $row->title . '</b>';
+		//$result[$nid] = $description;
+
+		$result[] = array(
+			'nid' => $row->nid,
+			'date' => $row->field_transaction_date_value,
+			'amount' => $row->field_amount_value,
+			'title' => $row->title,
+		);
 	}
 
 	return $result;
+}
+
+function bankstat_get_untagged_nids_with_description_and_suggested_term($limit = null) {
+	$list = bankstat_get_untagged_nids_with_description($limit);
+
+	$list_with_suggested_tags = array();
+
+
+	foreach (array_keys($list) as $nid) {
+		$title = bankstat_get_title($nid);
+		$suggested_tid = bankstat_guess_tid_to_use($title);
+
+		if ($suggested_tid != 0) {
+			//echo "nid: " . $nid . "<br/>";
+			//echo "title: " . $title . "<br/>";
+			//echo "tid: " . $suggested_tid . "<br/>";
+		}
+		$list_with_suggested_tags[$nid] = $suggested_tid;
+	}
+
+	//die();
+
+	return $list;
+
+}
+
+function bankstat_get_title($nid) {
+	$query = db_select('node', 'n');
+	$query->fields('n', array('title'));
+	$query->condition('n.nid', $nid, '=');
+
+	$query_result = $query->execute()->fetchAll();
+
+	$title = $query_result[0]->title;
+
+	return $title;
+}
+
+
+function bankstat_guess_tid_to_use($title) {
+	$query = db_select('node', 'n');
+	$query->join('field_data_field_tag', 'Tag', 'Tag.entity_id = n.nid');
+	$query->fields('Tag', array('field_tag_tid'));
+	$query->condition('n.type', 'expensetype', '=');
+	$query->condition('n.title', $title, '=');
+	//$query->condition('n.title', db_like($title), 'LIKE');
+
+	$query_result = $query->execute()->fetchAll();
+
+	if (count($query_result) > 0) {
+		return $query_result[0]->field_tag_tid;	
+	} else {
+		return 0;
+	}
 }
