@@ -274,7 +274,7 @@ function bankstat_view_all_form_submit($form, &$form_state) {
 
 
 function bankstat_assign_all_form($form, &$form_state) {
-	$limit = 100;
+	$limit = 1000;
 	$nodes = bankstat_get_untagged_nids_with_description($limit);
 
 	$form['#attached']['js'] = array(
