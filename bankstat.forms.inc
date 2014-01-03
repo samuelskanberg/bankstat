@@ -272,6 +272,116 @@ function bankstat_view_all_form_submit($form, &$form_state) {
 	drupal_set_message(t('Successfully set @number items to @tag', array('@number' => $number, '@tag' => $tag_name)));
 }
 
+
+function bankstat_assign_all_form($form, &$form_state) {
+	$limit = 100;
+	$nodes = bankstat_get_untagged_nids_with_description($limit);
+
+	$form['#attached']['js'] = array(
+		drupal_get_path('module', 'bankstat') . '/bankstat.js',
+	);
+
+	$form['scripttextfield'] = array(
+		'#id' => 'scripttextfield',
+		'#type' => 'textfield',
+		'#title' => t('Script your stuff'),
+	);
+
+	$form['applyscriptbutton'] = array(
+		'#id' => 'applyscriptbutton',
+		'#type' => 'button',
+		'#value' => t('Apply rule'),
+		//'#attributes ' => array('onclick' => 'applyPatternOnSelect()'),
+	);
+
+	$form['selected_nids'] = array(
+		'#id' => 'selected_nids',
+		'#type' => 'checkboxes',
+		'#title' => t('Nodes'),
+		'#options' => $nodes,
+	);
+
+	// Get a list of all the expense_tags
+	$expense_tags_vocabulary = taxonomy_vocabulary_machine_name_load('expense');
+	$terms = taxonomy_get_tree($expense_tags_vocabulary->vid);
+
+	$expense_tags_terms = array();
+
+	$expense_tags_terms[0] = '<' . t('Create new term') . '>';
+
+	foreach($terms as $term) {
+		$expense_tags_terms[$term->tid] = $term->name;
+	}
+
+	$tids = array_keys($expense_tags_terms);
+	$default_value = $tids[0];
+
+  $form['expense_tags'] = array(
+			'#id' => 'expense_tags',
+			'#type' => 'select',
+			'#title' => t('Expense tags'),
+			'#default_value' => $default_value,
+			'#options' => $expense_tags_terms,
+	);
+
+	$form['new_tag'] = array(
+		'#id' => 'new_tag',
+		'#type' => 'textfield',
+		'#title' => t('New tag'),
+	);
+
+	$form['submit_button'] = array(
+		'#type' => 'submit',
+		'#value' => t('Set new tags'),
+	);
+
+	return $form;
+}
+
+
+function bankstat_assign_all_form_submit($form, &$form_state) {
+	// Get all selected values
+
+	$selected_nids = array_keys(array_filter($form_state['values']['selected_nids']));
+
+	$expense_tag_dropdown_tid = intval($form_state['values']['expense_tags']);
+
+	if ($expense_tag_dropdown_tid == 0) {
+		//echo "new tag used <br/>";
+		// Create new term
+		$expense_tags_vocabulary = taxonomy_vocabulary_machine_name_load('expense');
+		//https://api.drupal.org/api/drupal/modules!taxonomy!taxonomy.module/function/taxonomy_term_save/7
+		$term = new stdClass();
+		$term->name = $form_state['values']['new_tag'];
+		$term->vid = $expense_tags_vocabulary->vid;
+		taxonomy_term_save($term);
+		$expense_tag_tid = $term->tid;
+		//echo "<br/>new tag created with name " . $term->name . ", tid: " . $expense_tag_tid . "<br/>";
+
+	} else {
+		$expense_tag_tid = $expense_tag_dropdown_tid;
+	}
+
+	//echo "<br/><br/>expense tag tid: " . $expense_tag_tid;
+	$term = taxonomy_term_load($expense_tag_tid);
+
+
+	$tag_name = $term->name;
+	$number = count($selected_nids);	
+
+	foreach ($selected_nids as $nid) {
+		$node = node_load($nid);
+		$node->field_tag[$node->language][0]['tid'] = $expense_tag_tid;
+		// Now we can say that this node is categorized
+		$node->field_is_categorized[$node->language][0]['value'] = 1;
+		node_save($node);
+	}
+
+	drupal_set_message(t('Successfully set @number items to @tag', array('@number' => $number, '@tag' => $tag_name)));
+}
+
+
+
 function bankstat_view_node_expensetype_form($form, &$form_state) {
 	// TODO: Load all expense types
 
@@ -957,4 +1067,31 @@ function bankstat_last_date() {
 	} else {
 		return '2100-01-01';
 	}
+}
+
+function bankstat_get_untagged_nids_with_description($limit = null) {
+	$query = db_select('node', 'n');
+	$query->join('field_data_field_transaction_date', 'TransactionDate', 'TransactionDate.entity_id = n.nid');
+	$query->join('field_data_field_amount', 'Amount', 'Amount.entity_id = n.nid');
+	$query->leftjoin('field_data_field_tag', 'Tag', 'Tag.entity_id = n.nid');
+	$query->condition('n.type', 'expensetype', '=');
+	$query->isNull('Tag.entity_id');
+	$query->fields('n', array('nid', 'title'));
+	$query->fields('TransactionDate', array('field_transaction_date_value'));
+	$query->fields('Amount', array('field_amount_value'));
+	if ($limit != null) {
+		$query->range(0, intval($limit)-1);
+	}
+
+	$query_result = $query->execute()->fetchAll();
+	
+	$result = array();
+
+	foreach ($query_result as $row) {
+		$nid = $row->nid;
+		$description = $row->field_transaction_date_value . ', ' . $row->field_amount_value . ' <b>' . $row->title . '</b>';
+		$result[$nid] = $description;
+	}
+
+	return $result;
 }
