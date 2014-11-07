@@ -18,5 +18,5 @@ Screenshots
 ===========
 
 Choose some categories and view your spendings
-![View](http://imagizer.imageshack.us/a/img538/8747/rPXv0Q.png)
+![View result](http://imagizer.imageshack.us/a/img538/8747/rPXv0Q.png)
 
