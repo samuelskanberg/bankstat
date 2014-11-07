@@ -13,3 +13,10 @@ Get started
 * Assign the nodes to the proper categories (takes some time and is time consuming)
 * View the results!
 
+
+Screenshots
+===========
+
+Choose some categories and view your spendings
+![View](http://imagizer.imageshack.us/a/img538/8747/rPXv0Q.png =200x)
+
