@@ -84,8 +84,8 @@ function bankstat_import_file_to_database($filepath, $bank_account_tid) {
 				'booking_date' => $fields[0],
 				'transaction_date' => $fields[1],
 				'title' => $fields[2],
-				'amount' => $fields[3],
-				'balance' => $fields[4],
+				'amount' => str_replace(" ", "", $fields[3]),
+				'balance' => str_replace(" ", "", $fields[4]),
 				'bank_account_tid' => $bank_account_tid,
 			);
 
