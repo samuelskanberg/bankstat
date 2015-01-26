@@ -1,8 +1,8 @@
 #!/bin/bash
 
 if [ $# -ne 2 ]; then
-	echo usage: $0 input.xls output.csv
-	exit 1
+    echo usage: $0 input.xls output.csv
+    exit 1
 fi
 
 input=$1
