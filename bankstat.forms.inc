@@ -1,5 +1,8 @@
 <?php
 
+/* ----- PAGES FORMS ----- */
+
+// Import file to database
 function bankstat_import_form($form, &$form_state) {
     $form['file'] = array(
         '#type' => 'file',
@@ -50,76 +53,7 @@ function bankstat_import_form_submit($form, &$form_state) {
     }
 }
 
-
-function bankstat_import_file_to_database($filepath, $bank_account_tid) {
-    $file = fopen($filepath, 'r');
-
-    $header_expected = array(
-        "Bokf.dat",
-        "Trans.dat",
-        "Text",
-        "Insättning/Uttag",
-        "Behållning"
-    );
-
-    // First get the header row
-    $line = fgets($file);
-    // TODO: Validate header row? Now we skip it ...
-
-    while(!feof($file)) {
-        $line = fgets($file);
-
-        // Remove text delimiter
-        $line = str_replace("\"", "", $line);
-
-        $fields = explode(";", $line);
-
-        // If we get this, it's probably the end of the file
-        if (count($fields) != count($header_expected)) {
-                break;
-        }
-
-        $node_info = array(
-            'booking_date' => $fields[0],
-            'transaction_date' => $fields[1],
-            'title' => $fields[2],
-            'amount' => str_replace(" ", "", $fields[3]),
-            'balance' => str_replace(" ", "", $fields[4]),
-            'bank_account_tid' => $bank_account_tid,
-        );
-
-        bankstat_create_node($node_info);
-    }
-    fclose($file);
-}
-
-
-function bankstat_create_node($node_info) {
-    print_r($node_info);
-
-    $node = new stdClass();
-    $node->type = 'expensetype';
-
-    node_object_prepare($node);
-
-    $node->title = $node_info['title'];
-    $node->language = LANGUAGE_NONE;
-
-    // Custom fields: Amount, balance, booking date, transaction date
-    $node->field_amount[$node->language][0]['value'] = $node_info['amount'];
-    $node->field_balance[$node->language][0]['value'] = $node_info['balance'];
-    $node->field_booking_date[$node->language][0]['value'] = $node_info['booking_date'];
-    $node->field_transaction_date[$node->language][0]['value'] = $node_info['transaction_date'];
-    // This will be false since we have not yet set any taxonomies on it. 0 equals false
-    $node->field_is_categorized[$node->language][0]['value'] = 0;
-    // Chosen bank account
-    $node->field_bank_account[$node->language][0]['tid'] = $node_info['bank_account_tid'];
-
-    $node = node_submit($node);
-    node_save($node);
-}
-
-
+// Manually assign node to terms
 function bankstat_assign_all_form($form, &$form_state) {
     $limit = 1000;
     $nodes = bankstat_get_untagged_nids_with_description($limit);
@@ -188,7 +122,6 @@ function bankstat_assign_all_form($form, &$form_state) {
     return $form;
 }
 
-
 function bankstat_assign_all_form_submit($form, &$form_state) {
     // Get all selected values
     $selected_nids = array_keys(array_filter($form_state['values']['selected_nids']));
@@ -224,6 +157,7 @@ function bankstat_assign_all_form_submit($form, &$form_state) {
     drupal_set_message(t('Successfully set @number items to @tag', array('@number' => $number, '@tag' => $tag_name)));
 }
 
+// Assign nodes to terms automatically based on what is already in the database
 function bankstat_assign_all_automatically_form($form, &$form_state) {
     $limit = 1000;
     $nodes = bankstat_get_untagged_nids_with_description_and_suggested_term($limit);
@@ -285,6 +219,7 @@ function bankstat_assign_all_automatically_form_submit($form, &$form_state) {
     drupal_set_message(t('Successfully set @number items to suggested tag', array('@number' => $number)));
 }
 
+// View statistics about the nodes and their terms in the database
 function bankstat_statistics_combined($form, &$form_state) {
     $all_terms = bankstat_get_all_terms();
 
@@ -422,6 +357,76 @@ function bankstat_statistics_combined_submit($form, &$form_state) {
     ));
 }
 
+
+/* ----- HELPER FUNCTIONS ----- */
+function bankstat_import_file_to_database($filepath, $bank_account_tid) {
+    $file = fopen($filepath, 'r');
+
+    $header_expected = array(
+        "Bokf.dat",
+        "Trans.dat",
+        "Text",
+        "Insättning/Uttag",
+        "Behållning"
+    );
+
+    // First get the header row
+    $line = fgets($file);
+    // TODO: Validate header row? Now we skip it ...
+
+    while(!feof($file)) {
+        $line = fgets($file);
+
+        // Remove text delimiter
+        $line = str_replace("\"", "", $line);
+
+        $fields = explode(";", $line);
+
+        // If we get this, it's probably the end of the file
+        if (count($fields) != count($header_expected)) {
+                break;
+        }
+
+        $node_info = array(
+            'booking_date' => $fields[0],
+            'transaction_date' => $fields[1],
+            'title' => $fields[2],
+            'amount' => str_replace(" ", "", $fields[3]),
+            'balance' => str_replace(" ", "", $fields[4]),
+            'bank_account_tid' => $bank_account_tid,
+        );
+
+        bankstat_create_node($node_info);
+    }
+    fclose($file);
+}
+
+
+function bankstat_create_node($node_info) {
+    print_r($node_info);
+
+    $node = new stdClass();
+    $node->type = 'expensetype';
+
+    node_object_prepare($node);
+
+    $node->title = $node_info['title'];
+    $node->language = LANGUAGE_NONE;
+
+    // Custom fields: Amount, balance, booking date, transaction date
+    $node->field_amount[$node->language][0]['value'] = $node_info['amount'];
+    $node->field_balance[$node->language][0]['value'] = $node_info['balance'];
+    $node->field_booking_date[$node->language][0]['value'] = $node_info['booking_date'];
+    $node->field_transaction_date[$node->language][0]['value'] = $node_info['transaction_date'];
+    // This will be false since we have not yet set any taxonomies on it. 0 equals false
+    $node->field_is_categorized[$node->language][0]['value'] = 0;
+    // Chosen bank account
+    $node->field_bank_account[$node->language][0]['tid'] = $node_info['bank_account_tid'];
+
+    $node = node_submit($node);
+    node_save($node);
+}
+
 function bankstat_get_tid_sum($tids, $months) {
     $query = db_select('node', 'n');
     $query->join('field_data_field_amount', 'Amount', 'Amount.entity_id = n.nid');
@@ -475,7 +480,6 @@ function bankstat_get_tid_sum($tids, $months) {
 
     return $result;
 }
-
 
 function bankstat_get_tid_sum_over_time($tids, $start_date, $end_date) {
     $all_months = bankstat_get_all_months_between($start_date, $end_date);
@@ -543,8 +547,6 @@ function bankstat_get_all_terms() {
 
     return $result;
 }
-
-
 
 function bankstat_get_all_months_between($start_date_str, $end_date_str) {
     $months = array();
