@@ -358,6 +358,24 @@ function bankstat_statistics_combined_submit($form, &$form_state) {
 }
 
 
+// View statistics about the nodes and their terms in the database
+function bankstat_view_terms($form, &$form_state) {
+    $all_terms = bankstat_get_all_terms();
+
+    $content = '';
+    foreach ($all_terms as $tid => $term_name) {
+        $content .= '<tr><td>' . '<a href="' . $tid . '">' . $term_name . '</a>' . '</td></tr>';
+    }
+
+    $form['linechart'] = array(
+        '#prefix' => '<table><thead><tr><th>Term</th></tr><tbody>',
+        '#markup' => $content,
+        '#suffix' => '</tbody></table>',
+    );
+
+    return $form;
+}
+
 /* ----- HELPER FUNCTIONS ----- */
 function bankstat_import_file_to_database($filepath, $bank_account_tid) {
     $file = fopen($filepath, 'r');

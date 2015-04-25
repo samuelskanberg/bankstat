@@ -39,6 +39,15 @@ function bankstat_menu() {
         'file' => 'bankstat.forms.inc',
     );
 
+    $items['bankstat/view/terms'] = array( 
+        'title' => 'View terms', 
+        'description' => 'Page to view terms',
+        'page callback' => 'drupal_get_form', 
+        'page arguments' => array('bankstat_view_terms'),
+        'access callback' => TRUE,
+        'file' => 'bankstat.forms.inc',
+    );
+
     return $items;
 }
 
