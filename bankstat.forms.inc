@@ -364,8 +364,21 @@ function bankstat_view_terms($form, &$form_state) {
 
     $content = '';
     foreach ($all_terms as $tid => $term_name) {
-        $content .= '<tr><td>' . '<a href="' . $tid . '">' . $term_name . '</a>' . '</td></tr>';
+        $content .= '<tr><td>' . '<a href="' . url('bankstat/view/nodes', array('query' => array('term' => $tid))) . '">' . $term_name . '</a>' . '</td></tr>';
     }
+
+    $form['linechart'] = array(
+        '#prefix' => '<table><thead><tr><th>Term</th></tr><tbody>',
+        '#markup' => $content,
+        '#suffix' => '</tbody></table>',
+    );
+
+    return $form;
+}
+
+function bankstat_view_nodes($form, &$form_state) {
+
+    $content = '<tr><td>Hej hej</tr></td>';
 
     $form['linechart'] = array(
         '#prefix' => '<table><thead><tr><th>Term</th></tr><tbody>',

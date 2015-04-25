@@ -48,6 +48,15 @@ function bankstat_menu() {
         'file' => 'bankstat.forms.inc',
     );
 
+    $items['bankstat/view/nodes'] = array( 
+        'title' => 'View nodes', 
+        'description' => 'Page to view nodes',
+        'page callback' => 'drupal_get_form', 
+        'page arguments' => array('bankstat_view_nodes'),
+        'access callback' => TRUE,
+        'file' => 'bankstat.forms.inc',
+    );
+
     return $items;
 }
 
