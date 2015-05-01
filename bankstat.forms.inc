@@ -283,10 +283,16 @@ function bankstat_statistics_combined($form, &$form_state) {
         '#default_value' => $end_date_default_value,
     );
 
+    $all_terms_with_links = array();
+    // Also make the text for the checkbox a link
+    foreach ($all_terms as $tid => $term_name) {
+        // TODO: Fix date formatting so we don't need the quatition marks
+        $all_terms_with_links[$tid] = '<a href="'. url('bankstat/view/nodes', array('query' => array('term' => $tid, 'start_date' => '"'.$start_date.'"', 'end_date' => '"'.$end_date.'"'))) . '">' . $term_name . '</a>';
+    }
     $form['selected_tids'] = array(
         '#type' => 'checkboxes',
         '#title' => t('Terms'),
-        '#options' => $all_terms,
+        '#options' => $all_terms_with_links,
         '#default_value' => $expense_tag_tids,
     );
 
