@@ -367,7 +367,7 @@ function bankstat_view_terms($form, &$form_state) {
         $content .= '<tr><td>' . '<a href="' . url('bankstat/view/nodes', array('query' => array('term' => $tid))) . '">' . $term_name . '</a>' . '</td></tr>';
     }
 
-    $form['linechart'] = array(
+    $form['table'] = array(
         '#prefix' => '<table><thead><tr><th>Term</th></tr><tbody>',
         '#markup' => $content,
         '#suffix' => '</tbody></table>',
@@ -376,12 +376,55 @@ function bankstat_view_terms($form, &$form_state) {
     return $form;
 }
 
+// View nodes
 function bankstat_view_nodes($form, &$form_state) {
+    $first_date = bankstat_first_date();
+    $last_date = bankstat_last_date();
 
-    $content = '<tr><td>Hej hej</tr></td>';
+    if (isset($_GET['term'])) {
+        $term_tid = json_decode($_GET['term']);
+    } else {
+        return $form;
+    }
 
-    $form['linechart'] = array(
-        '#prefix' => '<table><thead><tr><th>Term</th></tr><tbody>',
+    if (isset($_GET['start_date'])) {
+        $start_date = json_decode($_GET['start_date']);
+    } else {
+        $start_date = $first_date;
+    }
+
+    if (isset($_GET['end_date'])) {
+        $end_date = json_decode($_GET['end_date']);
+    } else {
+        $end_date = $last_date;
+    }
+
+    $nodes = bankstat_get_nodes($term_tid, $start_date, $end_date);
+
+    $content = '';
+
+    foreach ($nodes as $node) {
+        $content .= '<tr>';
+        $content .= '<td>';
+        $content .= $node['nid'];
+        $content .= '</td>';
+        $content .= '<td>';
+        $content .= $node['date'];
+        $content .= '</td>';
+        $content .= '<td>';
+        $content .= $node['title'];
+        $content .= '</td>';
+        $content .= '<td>';
+        $content .= $node['amount'];
+        $content .= '</td>';
+        $content .= '<td>';
+        $content .= $node['term'];
+        $content .= '</td>';
+        $content .= '</tr>';
+    }
+
+    $form['table'] = array(
+        '#prefix' => '<table><thead><tr><th>ID</th><th>Date</th><th>Title</th><th>Amount</th><th>Term</th></tr><tbody>',
         '#markup' => $content,
         '#suffix' => '</tbody></table>',
     );
@@ -577,6 +620,19 @@ function bankstat_get_all_terms() {
     }
 
     return $result;
+}
+
+
+function bankstat_get_nodes($term_tid, $start_date, $end_date) {
+    return array(
+        array(
+            'nid' => 1,
+            'date' => '2014-01-01',
+            'title' => 'Foo stuff food',
+            'amount' => '78',
+            'term' => 'Mat',
+        ),
+    );
 }
 
 function bankstat_get_all_months_between($start_date_str, $end_date_str) {
