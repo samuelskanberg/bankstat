@@ -399,7 +399,7 @@ function bankstat_view_nodes($form, &$form_state) {
         $end_date = $last_date;
     }
 
-    $nodes = bankstat_get_nodes($term_tid, $start_date, $end_date);
+    $nodes = bankstat_get_nodes(array($term_tid), $start_date, $end_date);
 
     $content = '';
 
@@ -623,16 +623,43 @@ function bankstat_get_all_terms() {
 }
 
 
-function bankstat_get_nodes($term_tid, $start_date, $end_date) {
-    return array(
-        array(
-            'nid' => 1,
-            'date' => '2014-01-01',
-            'title' => 'Foo stuff food',
-            'amount' => '78',
-            'term' => 'Mat',
-        ),
-    );
+function bankstat_get_nodes($tids, $start_date, $end_date) {
+    $query = db_select('node', 'n');
+    $query->join('field_data_field_amount', 'Amount', 'Amount.entity_id = n.nid');
+    $query->join('field_data_field_tag', 'Tag', 'Tag.entity_id = n.nid');
+    $query->join('taxonomy_term_data', 'Term', 'Term.tid = Tag.field_tag_tid');
+    $query->join('field_data_field_transaction_date', 'TransactionDate', 'TransactionDate.entity_id = n.nid');
+    $query->fields('n', array('nid', 'title'));
+    $query->fields('Term', array('name'));
+    $query->fields('Term', array('tid'));
+    $query->fields('Amount', array('field_amount_value'));
+    $query->fields('TransactionDate', array('field_transaction_date_value'));
+    $query->condition('n.type', 'expensetype', '=');
+    $query->condition('TransactionDate.field_transaction_date_value', $start_date, '>');
+    $query->condition('TransactionDate.field_transaction_date_value', $end_date, '<');
+
+    // Specify specific terms to show
+    if (count($tids) > 0) {
+        $query->condition('Term.tid', $tids, 'in');
+    }
+
+    $query_result = $query->execute()->fetchAll();
+
+    $result = array();
+
+    foreach ($query_result as $row) {
+        $node = array(
+            'nid' => $row->nid,
+            'date' => $row->field_transaction_date_value,
+            'title' => $row->title,
+            'amount' => $row->field_amount_value,
+            'tid' => $row->tid,
+            'term' => $row->name,
+        );
+        $result[] = $node;
+    }
+
+    return $result;
 }
 
 function bankstat_get_all_months_between($start_date_str, $end_date_str) {
