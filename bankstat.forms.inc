@@ -407,35 +407,106 @@ function bankstat_view_nodes($form, &$form_state) {
 
     $nodes = bankstat_get_nodes(array($term_tid), $start_date, $end_date);
 
+    $header = array(
+        'nid' => 'ID',
+        'date' => 'Date',
+        'title' => 'Title',
+        'amount' => 'Amount',
+        'term' => 'Term',
+    );
+
+    $options = array();
+
     $content = '';
 
     foreach ($nodes as $node) {
-        $content .= '<tr>';
-        $content .= '<td>';
-        $content .= $node['nid'];
-        $content .= '</td>';
-        $content .= '<td>';
-        $content .= $node['date'];
-        $content .= '</td>';
-        $content .= '<td>';
-        $content .= $node['title'];
-        $content .= '</td>';
-        $content .= '<td>';
-        $content .= $node['amount'];
-        $content .= '</td>';
-        $content .= '<td>';
-        $content .= $node['term'];
-        $content .= '</td>';
-        $content .= '</tr>';
+        $options[$node['nid']] = array(
+            'nid' => $node['nid'],
+            'date' => $node['date'],
+            'title' => $node['title'],
+            'amount' => $node['amount'],
+            'term' => $node['term'],
+        );
     }
 
-    $form['table'] = array(
-        '#prefix' => '<table><thead><tr><th>ID</th><th>Date</th><th>Title</th><th>Amount</th><th>Term</th></tr><tbody>',
-        '#markup' => $content,
-        '#suffix' => '</tbody></table>',
+    $form['selected_nids'] = array(
+        '#type' => 'tableselect',
+        '#header' => $header,
+        '#options' => $options,
+        '#empty' => t('No nodes found'),
+    );
+
+    // Get a list of all the expense_tags
+    $expense_tags_vocabulary = taxonomy_vocabulary_machine_name_load('expense');
+    $terms = taxonomy_get_tree($expense_tags_vocabulary->vid);
+
+    $expense_tags_terms = array();
+
+    $expense_tags_terms[0] = '<' . t('Create new term') . '>';
+
+    foreach($terms as $term) {
+        $expense_tags_terms[$term->tid] = $term->name;
+    }
+
+    $tids = array_keys($expense_tags_terms);
+    $default_value = $tids[0];
+
+    $form['expense_tags'] = array(
+        '#id' => 'expense_tags',
+        '#type' => 'select',
+        '#title' => t('Expense tags'),
+        '#default_value' => $default_value,
+        '#options' => $expense_tags_terms,
+    );
+
+    $form['new_tag'] = array(
+        '#id' => 'new_tag',
+        '#type' => 'textfield',
+        '#title' => t('New tag'),
+    );
+
+    $form['submit_button'] = array(
+        '#type' => 'submit',
+        '#value' => t('Set new tags'),
     );
 
     return $form;
+}
+
+// Just basically a copy of bankstat_assign_all_form_submit 
+function bankstat_view_nodes_submit($form, &$form_state) {
+    // Get all selected values
+    $selected_nids = array_keys(array_filter($form_state['values']['selected_nids']));
+
+    $expense_tag_dropdown_tid = intval($form_state['values']['expense_tags']);
+
+    if ($expense_tag_dropdown_tid == 0) {
+        // Create new term
+        $expense_tags_vocabulary = taxonomy_vocabulary_machine_name_load('expense');
+        //https://api.drupal.org/api/drupal/modules!taxonomy!taxonomy.module/function/taxonomy_term_save/7
+        $term = new stdClass();
+        $term->name = $form_state['values']['new_tag'];
+        $term->vid = $expense_tags_vocabulary->vid;
+        taxonomy_term_save($term);
+        $expense_tag_tid = $term->tid;
+    } else {
+        $expense_tag_tid = $expense_tag_dropdown_tid;
+    }
+
+    $term = taxonomy_term_load($expense_tag_tid);
+
+    $tag_name = $term->name;
+    $number = count($selected_nids);	
+
+    foreach ($selected_nids as $nid) {
+        $node = node_load($nid);
+        $node->field_tag[$node->language][0]['tid'] = $expense_tag_tid;
+        // Now we can say that this node is categorized
+        $node->field_is_categorized[$node->language][0]['value'] = 1;
+        node_save($node);
+    }
+
+    drupal_set_message(t('Successfully set @number items to @tag', array('@number' => $number, '@tag' => $tag_name)));
 }
 
 /* ----- HELPER FUNCTIONS ----- */
