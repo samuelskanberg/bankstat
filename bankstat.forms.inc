@@ -312,7 +312,7 @@ function bankstat_statistics_combined($form, &$form_state) {
         'containerId' =>  'linechart',
         'options' => array(
             'forceIFrame' => FALSE,
-            'title' => 'Utgifter',
+            'title' => 'Utgifter', 
             'width' => 800,
             'height' => 600
         )
@@ -331,7 +331,7 @@ function bankstat_statistics_combined($form, &$form_state) {
         'containerId' =>  'piechart',
         'options' => array(
             'forceIFrame' => FALSE,
-            'title' => 'Utgifter',
+            'title' => 'Utgifter - ' . array_sum($piechartResult['sums']),
             'width' => 800,
             'height' => 400
         )
