@@ -714,6 +714,7 @@ function bankstat_get_nodes($tids, $start_date, $end_date) {
     $query->condition('n.type', 'expensetype', '=');
     $query->condition('TransactionDate.field_transaction_date_value', $start_date, '>');
     $query->condition('TransactionDate.field_transaction_date_value', $end_date, '<');
+    $query->orderBy('TransactionDate.field_transaction_date_value');
 
     // Specify specific terms to show
     if (count($tids) > 0) {
