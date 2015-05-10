@@ -608,7 +608,7 @@ function bankstat_get_tid_sum($tids, $months) {
         $end_date->modify('first day of next month');
         $end_date = $end_date->format('Y-m-d');
 
-        $query->condition('TransactionDate.field_transaction_date_value', $start_date, '>');
+        $query->condition('TransactionDate.field_transaction_date_value', $start_date, '>=');
         $query->condition('TransactionDate.field_transaction_date_value', $end_date, '<');
     }
 
@@ -712,8 +712,8 @@ function bankstat_get_nodes($tids, $start_date, $end_date) {
     $query->fields('Amount', array('field_amount_value'));
     $query->fields('TransactionDate', array('field_transaction_date_value'));
     $query->condition('n.type', 'expensetype', '=');
-    $query->condition('TransactionDate.field_transaction_date_value', $start_date, '>');
-    $query->condition('TransactionDate.field_transaction_date_value', $end_date, '<');
+    $query->condition('TransactionDate.field_transaction_date_value', $start_date, '>=');
+    $query->condition('TransactionDate.field_transaction_date_value', $end_date, '<=');
     $query->orderBy('TransactionDate.field_transaction_date_value');
 
     // Specify specific terms to show
