@@ -266,6 +266,9 @@ function bankstat_statistics_combined($form, &$form_state) {
         '#markup' => '<div id="piechart" style="width: 800px; height: 400px;"></div>',
     );
 
+    $form['piechart_positive'] = array(
+        '#markup' => '<div id="piechart_positive" style="width: 800px; height: 400px;"></div>',
+    );
 
     $start_date_times = explode('-', $start_date);
     $start_date_default_value = array(
@@ -383,6 +386,21 @@ function bankstat_statistics_combined($form, &$form_state) {
         'options' => array(
             'forceIFrame' => FALSE,
             'title' => 'Utgifter - ' . array_sum($piechartResult['sums']),
+            'width' => 800,
+            'height' => 400
+        )
+    );
+
+    $piechartPositiveResult = bankstat_get_tid_sum($expense_tag_tids, $selected_months, false);
+    $settings['chart']['piechart_positive'] = array(
+        'header' => $piechartPositiveResult['names'],
+        'rows' => array($piechartPositiveResult['sums']),
+        'columns' => array('Inkomster'),
+        'chartType' => 'PieChart',
+        'containerId' =>  'piechart_positive',
+        'options' => array(
+            'forceIFrame' => FALSE,
+            'title' => 'Inkomster - ' . array_sum($piechartPositiveResult['sums']),
             'width' => 800,
             'height' => 400
         )
@@ -629,7 +647,7 @@ function bankstat_create_node($node_info) {
     node_save($node);
 }
 
-function bankstat_get_tid_sum($tids, $months) {
+function bankstat_get_tid_sum($tids, $months, $show_minus_total = true) {
     $query = db_select('node', 'n');
     $query->join('field_data_field_amount', 'Amount', 'Amount.entity_id = n.nid');
     $query->join('field_data_field_tag', 'Tag', 'Tag.entity_id = n.nid');
@@ -640,8 +658,13 @@ function bankstat_get_tid_sum($tids, $months) {
     $query->fields('Term', array('tid'));
     $query->addExpression('sum(field_amount_value)', 'Total');
     $query->condition('n.type', 'expensetype', '=');
-    $query->havingCondition('Total', 0, '<');
-
+    
+    // By default, we will show the expenses, not the income
+    if ($show_minus_total) {
+        $query->havingCondition('Total', 0, '<');
+    } else {
+        $query->havingCondition('Total', 0, '>');
+    }
 
     // Specify specific terms to show
     if (count($tids) > 0) {
