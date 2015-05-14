@@ -258,14 +258,25 @@ function bankstat_statistics_combined($form, &$form_state) {
         '#markup' => '<div id="linechart" style="width: 800px; height: 600px;"></div>',
     );
 
+    $form['linechart_positive'] = array(
+        '#markup' => '<div id="linechart_positive" style="width: 800px; height: 600px;"></div>',
+    );
+
     $form['stepchart'] = array(
         '#markup' => '<div id="stepchart" style="width: 800px; height: 600px;"></div>',
+    );
+
+    $form['stepchart_positive'] = array(
+        '#markup' => '<div id="stepchart_positive" style="width: 800px; height: 600px;"></div>',
     );
 
     $form['piechart'] = array(
         '#markup' => '<div id="piechart" style="width: 800px; height: 400px;"></div>',
     );
 
+    $form['piechart_positive'] = array(
+        '#markup' => '<div id="piechart_positive" style="width: 800px; height: 400px;"></div>',
+    );
 
     $start_date_times = explode('-', $start_date);
     $start_date_default_value = array(
@@ -328,6 +339,22 @@ function bankstat_statistics_combined($form, &$form_state) {
         )
     );
 
+    $linechartPositiveResult = bankstat_get_tid_sum_over_time($expense_tag_tids, $start_date, $end_date, false);
+
+    $settings['chart']['linechart_positive'] = array(
+        'header' => $linechartPositiveResult['header'],
+        'rows' => array_values($linechartPositiveResult['values']),
+        'columns' => array_keys($linechartPositiveResult['values']),
+        'chartType' => 'LineChart',
+        'containerId' =>  'linechart_positive',
+        'options' => array(
+            'forceIFrame' => FALSE,
+            'title' => 'Inkomster', 
+            'width' => 800,
+            'height' => 600
+        )
+    );
+
 
     // Result for showing the step chart
     $stepchartResult = bankstat_get_tid_sum_over_time($expense_tag_tids, $start_date, $end_date);
@@ -344,37 +371,64 @@ function bankstat_statistics_combined($form, &$form_state) {
     //$graph_data[] = array('2014-03',    6.5,         6.4);
     //$graph_data[] = array('2014-04',    4.4,         5.2);
 
-    $new_header = array();
-    $new_header[] = "(Year-Month)";
+    $header = array();
+    $header[] = "(Year-Month)";
 
     $values = $stepchartResult['values'];
 
     foreach (array_keys($values) as $term_name) {
-        $new_header[] = $term_name;
+        $header[] = $term_name;
     }
-    $new_graph_data = array();
-    $new_graph_data[] = $new_header;
+    $graph_data = array();
+    $graph_data[] = $header;
     for ($i = 0; $i < count($stepchartResult['header']); $i++) {
         $year_month = $stepchartResult['header'][$i];
         $year_month_values = array($year_month);
         foreach ($values as $term_values) {
            $year_month_values[] = $term_values[$i];
         }
-        $new_graph_data[] = $year_month_values;
+        $graph_data[] = $year_month_values;
     }
 
-    $graph_data = $new_graph_data;
+
+
+
+
+    // Positive step result
+
+    $stepchartPositiveResult = bankstat_get_tid_sum_over_time($expense_tag_tids, $start_date, $end_date, false);
+
+    $headerPositive = array();
+    $headerPositive[] = "(Year-Month)";
+
+    $valuesPositive = $stepchartPositiveResult['values'];
+
+    foreach (array_keys($valuesPositive) as $term_name) {
+        $headerPositive[] = $term_name;
+    }
+    $graph_data_positive = array();
+    $graph_data_positive[] = $headerPositive;
+    for ($i = 0; $i < count($stepchartPositiveResult['header']); $i++) {
+        $year_month = $stepchartPositiveResult['header'][$i];
+        $year_month_values = array($year_month);
+        foreach ($valuesPositive as $term_values) {
+           $year_month_values[] = $term_values[$i];
+        }
+        $graph_data_positive[] = $year_month_values;
+    }
+
     
     // Here we use google chart directly instead of using the google chart tools module
     drupal_add_js(array('bankstat' => array(
-        'graph_data' => $graph_data
+        'graph_data' => $graph_data,
+        'graph_data_positive' => $graph_data_positive
     )), 'setting');
 
     // Result for showing the sum over the same time
     $selected_months = bankstat_get_all_months_between($start_date, $end_date);
     $piechartResult = bankstat_get_tid_sum($expense_tag_tids, $selected_months);
 
-    $settings['chart']['chartTwo'] = array(
+    $settings['chart']['piechart'] = array(
         'header' => $piechartResult['names'],
         'rows' => array($piechartResult['sums']),
         'columns' => array('Utgifter'),
@@ -383,6 +437,21 @@ function bankstat_statistics_combined($form, &$form_state) {
         'options' => array(
             'forceIFrame' => FALSE,
             'title' => 'Utgifter - ' . array_sum($piechartResult['sums']),
+            'width' => 800,
+            'height' => 400
+        )
+    );
+
+    $piechartPositiveResult = bankstat_get_tid_sum($expense_tag_tids, $selected_months, false);
+    $settings['chart']['piechart_positive'] = array(
+        'header' => $piechartPositiveResult['names'],
+        'rows' => array($piechartPositiveResult['sums']),
+        'columns' => array('Inkomster'),
+        'chartType' => 'PieChart',
+        'containerId' =>  'piechart_positive',
+        'options' => array(
+            'forceIFrame' => FALSE,
+            'title' => 'Inkomster - ' . array_sum($piechartPositiveResult['sums']),
             'width' => 800,
             'height' => 400
         )
@@ -629,7 +698,7 @@ function bankstat_create_node($node_info) {
     node_save($node);
 }
 
-function bankstat_get_tid_sum($tids, $months) {
+function bankstat_get_tid_sum($tids, $months, $show_minus_total = true) {
     $query = db_select('node', 'n');
     $query->join('field_data_field_amount', 'Amount', 'Amount.entity_id = n.nid');
     $query->join('field_data_field_tag', 'Tag', 'Tag.entity_id = n.nid');
@@ -640,8 +709,13 @@ function bankstat_get_tid_sum($tids, $months) {
     $query->fields('Term', array('tid'));
     $query->addExpression('sum(field_amount_value)', 'Total');
     $query->condition('n.type', 'expensetype', '=');
-    $query->havingCondition('Total', 0, '<');
-
+    
+    // By default, we will show the expenses, not the income
+    if ($show_minus_total) {
+        $query->havingCondition('Total', 0, '<');
+    } else {
+        $query->havingCondition('Total', 0, '>');
+    }
 
     // Specify specific terms to show
     if (count($tids) > 0) {
@@ -683,7 +757,7 @@ function bankstat_get_tid_sum($tids, $months) {
     return $result;
 }
 
-function bankstat_get_tid_sum_over_time($tids, $start_date, $end_date) {
+function bankstat_get_tid_sum_over_time($tids, $start_date, $end_date, $show_minus_total = true) {
     $all_months = bankstat_get_all_months_between($start_date, $end_date);
 
     // Create first column, the x axis
@@ -709,7 +783,7 @@ function bankstat_get_tid_sum_over_time($tids, $start_date, $end_date) {
             $stat[$stat_keys[$i]][] = 0;
         }
 
-        $stat_for_month = bankstat_get_tid_sum($tids, array($month));
+        $stat_for_month = bankstat_get_tid_sum($tids, array($month), $show_minus_total);
 
         for ($i = 0; $i < count($stat_for_month['names']); $i++) {
             $name = $stat_for_month['names'][$i]; 
