@@ -221,6 +221,11 @@ function bankstat_assign_all_automatically_form_submit($form, &$form_state) {
 
 // View statistics about the nodes and their terms in the database
 function bankstat_statistics_combined($form, &$form_state) {
+    // For accessing google chart
+    drupal_add_js('https://www.google.com/jsapi', 'external');
+    $path = drupal_get_path('module', 'bankstat');
+    drupal_add_js($path . '/bankstat-graph.js');
+
     $all_terms = bankstat_get_all_terms();
 
     $first_date = bankstat_first_date();
@@ -253,9 +258,14 @@ function bankstat_statistics_combined($form, &$form_state) {
         '#markup' => '<div id="linechart" style="width: 800px; height: 600px;"></div>',
     );
 
+    $form['stepchart'] = array(
+        '#markup' => '<div id="stepchart" style="width: 800px; height: 600px;"></div>',
+    );
+
     $form['piechart'] = array(
         '#markup' => '<div id="piechart" style="width: 800px; height: 400px;"></div>',
     );
+
 
     $start_date_times = explode('-', $start_date);
     $start_date_default_value = array(
@@ -318,6 +328,47 @@ function bankstat_statistics_combined($form, &$form_state) {
         )
     );
 
+
+    // Result for showing the step chart
+    $stepchartResult = bankstat_get_tid_sum_over_time($expense_tag_tids, $start_date, $end_date);
+
+    // Formatting this is a pain since it will go in the following format:
+
+    //$header = array('(Year-Month)',  'Mat', 'Hyra');
+
+    //$graph_data = array();
+    //
+    //$graph_data[] = $header;
+    //$graph_data[] = array('2014-01',    8.4,         7.9);
+    //$graph_data[] = array('2014-02',    6.9,         6.5);
+    //$graph_data[] = array('2014-03',    6.5,         6.4);
+    //$graph_data[] = array('2014-04',    4.4,         5.2);
+
+    $new_header = array();
+    $new_header[] = "(Year-Month)";
+
+    $values = $stepchartResult['values'];
+
+    foreach (array_keys($values) as $term_name) {
+        $new_header[] = $term_name;
+    }
+    $new_graph_data = array();
+    $new_graph_data[] = $new_header;
+    for ($i = 0; $i < count($stepchartResult['header']); $i++) {
+        $year_month = $stepchartResult['header'][$i];
+        $year_month_values = array($year_month);
+        foreach ($values as $term_values) {
+           $year_month_values[] = $term_values[$i];
+        }
+        $new_graph_data[] = $year_month_values;
+    }
+
+    $graph_data = $new_graph_data;
+    
+    // Here we use google chart directly instead of using the google chart tools module
+    drupal_add_js(array('bankstat' => array(
+        'graph_data' => $graph_data
+    )), 'setting');
 
     // Result for showing the sum over the same time
     $selected_months = bankstat_get_all_months_between($start_date, $end_date);
