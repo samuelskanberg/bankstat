@@ -983,6 +983,7 @@ function bankstat_guess_tid_to_use($title) {
     $query->fields('Tag', array('field_tag_tid'));
     $query->condition('n.type', 'expensetype', '=');
     $query->condition('n.title', $title, '=');
+    $query->orderBy('n.nid', 'DESC');
 
     $query_result = $query->execute()->fetchAll();
 
