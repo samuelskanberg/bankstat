@@ -18,12 +18,12 @@ Screenshots
 ===========
 
 Choose some categories and view your spendings
-![Graph](http://imagizer.imageshack.us/a/img538/8747/rPXv0Q.png)
+![Graph](https://raw.githubusercontent.com/samuelskanberg/bankstat/master/screenshots/stats2.png)
 
 Another graph
-![Pie chart](http://imagizer.imageshack.us/a/img745/9026/DN9qko.png)
+![Pie chart](https://raw.githubusercontent.com/samuelskanberg/bankstat/master/screenshots/stats.png)
 
 Assign transactions to what tags fit them best, or add new tags
-![Assign nodes](http://imagizer.imageshack.us/a/img674/3102/udo2Vz.png)
+![Assign nodes](https://raw.githubusercontent.com/samuelskanberg/bankstat/master/screenshots/assign.png)
 
 
