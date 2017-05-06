@@ -45,9 +45,13 @@ function bankstat_import_form_submit($form, &$form_state) {
 
     if ($file) {
         $realpath = drupal_realpath($file->uri);
-        bankstat_import_file_to_database($realpath, $bank_account_tid);
+        $result = bankstat_import_file_to_database($realpath, $bank_account_tid);
 
-        drupal_set_message(t('The file @filename has been imported', array('@filename' => $file->filename)));
+        if ($result['success']) {
+            drupal_set_message(t('The file @filename has been imported', array('@filename' => $file->filename)));
+        } else {
+            drupal_set_message($result['message'], 'error');
+        }
     } else {
         form_set_error('file', t('Error reading file'));
     }
@@ -630,6 +634,13 @@ function bankstat_view_nodes_submit($form, &$form_state) {
 }
 
 /* ----- HELPER FUNCTIONS ----- */
+// From 01-24-2016 to 2016-01-24
+function _reformat_date($date_str) {
+    $parts = explode('-', $date_str);
+    return $parts[2].'-'.$parts[0].'-'.$parts[1];
+}
+
+
 function bankstat_import_file_to_database($filepath, $bank_account_tid) {
     $file = fopen($filepath, 'r');
 
@@ -641,10 +652,26 @@ function bankstat_import_file_to_database($filepath, $bank_account_tid) {
         "Behållning"
     );
 
-    // First get the header row
+    // First get the header rows
     $line = fgets($file);
-    // TODO: Validate header row? Now we skip it ...
+    if (substr($line, 0, 12) !== '"Kontoutdrag') {
+        return array(
+            'success' => false,
+            'message' => t('Bad header line 1 in csv file. line: @line', array('@line' => $line)),
+        );
+    }
 
+    $line = fgets($file);
+    if (substr($line, 0, 53) !== 'Bokf.dat;Trans.dat;Text;Insättning/Uttag;Behållning') {
+        return array(
+            'success' => false,
+            'message' => 'Bad header line 2 in csv file',
+        );
+    }
+
+    $node_info_list = array();
+
+    $all_good = true;
     while(!feof($file)) {
         $line = fgets($file);
 
@@ -658,18 +685,30 @@ function bankstat_import_file_to_database($filepath, $bank_account_tid) {
                 break;
         }
 
+        // TODO: Validate line. If false, return
+
         $node_info = array(
-            'booking_date' => $fields[0],
-            'transaction_date' => $fields[1],
+            'booking_date' => _reformat_date($fields[0]),
+            'transaction_date' => _reformat_date($fields[1]),
             'title' => $fields[2],
             'amount' => str_replace(" ", "", $fields[3]),
             'balance' => str_replace(" ", "", $fields[4]),
             'bank_account_tid' => $bank_account_tid,
         );
 
-        bankstat_create_node($node_info);
+        $node_info_list[] = $node_info;
     }
     fclose($file);
+
+    // And now create them
+    foreach ($node_info_list as $node_info) {
+        bankstat_create_node($node_info);
+    }
+
+    return array(
+        'success' => true,
+        'message' => 'File imported',
+    );
 }
 
 
